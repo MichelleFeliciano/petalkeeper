@@ -4,7 +4,27 @@ import { useUI } from '../ui';
 import { TaskCard } from '../components/TaskCard';
 import { findConflicts, isDone, itemsOn, type Occurrence } from '../lib/schedule';
 import { addDays, DAY_NAMES, fmtLong, fmtShort, fmtTime, weekDates, weekday } from '../lib/dates';
-import { CATEGORIES } from '../lib/types';
+import { categoryOf } from '../lib/types';
+import { buildICS, downloadText } from '../lib/ics';
+import { weekSummary } from '../lib/summary';
+import { allCategories } from '../lib/types';
+
+function WeekReview({ dates }: { dates: string[] }) {
+  const { data } = useStore();
+  const w = weekSummary(data, dates);
+  const cats = allCategories(data.settings).filter((c) => w.byCategory[c.id]);
+  return (
+    <section className="card review" aria-label="Week in review">
+      <h2>Week in review</h2>
+      <p>
+        {w.done} of {w.total} activities tended
+        {w.routineSteps > 0 ? ` · ${w.routineSteps} routine steps` : ''}
+      </p>
+      {cats.length > 0 && <p className="meta">{cats.map((c) => `${c.icon} ${c.label}: ${w.byCategory[c.id]}`).join('  ·  ')}</p>}
+      <p>{w.message}</p>
+    </section>
+  );
+}
 
 export function Path() {
   const { data, today, moveOccurrence } = useStore();
@@ -12,6 +32,8 @@ export function Path() {
   const { weekStart, defaultDuration, buffer } = data.settings;
   const [anchor, setAnchor] = useState(today);
   const [mode, setMode] = useState<'week' | 'agenda'>('week');
+  const [review, setReview] = useState(false);
+  const [dragOver, setDragOver] = useState<string | null>(null);
   const dates = weekDates(anchor, weekStart);
 
   const byDay = useMemo(
@@ -54,27 +76,51 @@ export function Path() {
             <button className={'tab' + (mode === 'week' ? ' on' : '')} aria-pressed={mode === 'week'} onClick={() => setMode('week')}>Week</button>
             <button className={'tab' + (mode === 'agenda' ? ' on' : '')} aria-pressed={mode === 'agenda'} onClick={() => setMode('agenda')}>Agenda</button>
           </div>
+          <button className="btn ghost" onClick={() => setReview(!review)} aria-expanded={review}>Week in review</button>
+          <button className="btn ghost" onClick={() => downloadText(`petalkeeper-week-${dates[0]}.ics`, buildICS(data.tasks, dates[0], 7, defaultDuration), 'text/calendar')}>Add to calendar (.ics)</button>
+          <button className="btn ghost" onClick={() => window.print()}>Print</button>
           <button className="btn primary" onClick={() => openForm(undefined, { date: dates.includes(today) ? today : dates[0], category: 'appointment' })}>＋ Add</button>
         </div>
       </header>
 
+      {review && <WeekReview dates={dates} />}
       {mode === 'week' ? (
         <div className="week-grid">
           {dates.map((d) => {
             const { its, bad } = byDay[d];
             return (
-              <section key={d} className={'day-col card' + (d === today ? ' today' : '')} aria-label={fmtLong(d)}>
+              <section
+                key={d}
+                className={'day-col card' + (d === today ? ' today' : '') + (dragOver === d ? ' drop' : '')}
+                aria-label={fmtLong(d)}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOver(d);
+                }}
+                onDragLeave={() => setDragOver((c) => (c === d ? null : c))}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOver(null);
+                  const [id, from] = e.dataTransfer.getData('text/plain').split('|');
+                  if (id && from && from !== d) moveOccurrence(id, from, { date: d });
+                }}
+              >
                 <h2>
                   {DAY_NAMES[weekday(d)].slice(0, 3)} <small>{fmtShort(d)}</small>
                   {d === today && <span className="badge ok"> today</span>}
                 </h2>
                 {its.length === 0 && <p className="empty small">Open space 🌿</p>}
                 {its.map((o) => {
-                  const cat = CATEGORIES.find((c) => c.id === o.task.category);
+                  const cat = categoryOf(data.settings, o.task.category);
                   return (
-                    <div key={o.key} className={'mini' + (isDone(o.task, o.date) ? ' done' : '') + (bad.has(o.key) ? ' conflict' : '')}>
+                    <div
+                      key={o.key}
+                      draggable
+                      onDragStart={(e) => e.dataTransfer.setData('text/plain', `${o.task.id}|${o.date}`)}
+                      className={'mini' + (isDone(o.task, o.date) ? ' done' : '') + (bad.has(o.key) ? ' conflict' : '')}
+                    >
                       <button className="mini-title" onClick={() => openForm(o.task)} aria-label={`Edit ${o.task.title}`}>
-                        <span aria-hidden="true">{cat?.icon}</span> {o.task.start && <b>{fmtTime(o.task.start)} </b>}
+                        <span aria-hidden="true">{cat.icon}</span> {o.task.start && <b>{fmtTime(o.task.start)} </b>}
                         {o.task.title}
                         {isDone(o.task, o.date) && ' ✓'}
                       </button>

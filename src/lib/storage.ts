@@ -1,6 +1,6 @@
 import { isISODate, isTime } from './dates';
 import { sampleData } from './seed';
-import { CATEGORIES, DEFAULT_SETTINGS, type AppData, type Settings, type Task } from './types';
+import { DEFAULT_SETTINGS, type AppData, type CategoryDef, type Settings, type Task, type Template } from './types';
 
 export const STORAGE_KEY = 'petalkeeper.v1';
 
@@ -9,12 +9,11 @@ const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !
 const isStr = (v: unknown): v is string => typeof v === 'string';
 const optDate = (v: unknown) => v === undefined || isISODate(v);
 const optTime = (v: unknown) => v === undefined || isTime(v);
-const catIds: string[] = CATEGORIES.map((c) => c.id);
 
 function validTask(t: unknown): t is Task {
   if (!isObj(t)) return false;
   if (!isStr(t.id) || !isStr(t.title) || !isStr(t.notes)) return false;
-  if (!catIds.includes(t.category as string)) return false;
+  if (!isStr(t.category) || !t.category) return false;
   if (!['low', 'normal', 'high'].includes(t.priority as string)) return false;
   if (!optDate(t.date) || !optDate(t.due) || !optTime(t.start) || !optTime(t.end)) return false;
   if (t.duration !== undefined && (typeof t.duration !== 'number' || t.duration < 0)) return false;
@@ -59,9 +58,30 @@ export function validateData(raw: unknown): ValidateResult {
   if (s.defaultPage && ['today', 'rituals', 'path', 'seeds'].includes(s.defaultPage)) settings.defaultPage = s.defaultPage;
   if (typeof s.showFairy === 'boolean') settings.showFairy = s.showFairy;
   if (typeof s.showGarden === 'boolean') settings.showGarden = s.showGarden;
+  if (typeof s.notifications === 'boolean') settings.notifications = s.notifications;
+  if (typeof s.notifyLead === 'number' && s.notifyLead >= 0) settings.notifyLead = s.notifyLead;
+  if (s.decor && ['blooms', 'mushrooms', 'butterflies', 'stars'].includes(s.decor)) settings.decor = s.decor;
+  if (Array.isArray(s.customCategories)) {
+    settings.customCategories = (s.customCategories as unknown[]).filter(
+      (c): c is CategoryDef => isObj(c) && isStr(c.id) && isStr(c.label) && isStr(c.icon) && (c.color === undefined || isStr(c.color)),
+    );
+  }
+  if (isISODate(s.lastBackup)) settings.lastBackup = s.lastBackup;
+  if (isISODate(s.backupSnooze)) settings.backupSnooze = s.backupSnooze;
+  let templates: Template[] = [];
+  if (raw.templates !== undefined) {
+    if (
+      !Array.isArray(raw.templates) ||
+      !raw.templates.every((t) => isObj(t) && isStr(t.id) && isStr(t.name) && Array.isArray(t.items) && t.items.every((i) => isObj(i) && isStr(i.title) && isStr(i.category)))
+    ) {
+      return { ok: false, error: 'Templates in the file are malformed.' };
+    }
+    templates = raw.templates as Template[];
+  }
   return {
     ok: true,
     data: {
+      templates,
       version: 1,
       tasks: raw.tasks as Task[],
       routines: raw.routines as AppData['routines'],

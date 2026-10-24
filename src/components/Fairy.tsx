@@ -112,17 +112,48 @@ export function Fairy({ pose = 'welcome', size = 110 }: { pose?: Pose; size?: nu
   );
 }
 
-/** Tiny decorative garden strip. Blooms only ever accumulate. */
-export function GardenStrip({ blooms }: { blooms: number }) {
+type Decor = 'blooms' | 'mushrooms' | 'butterflies' | 'stars';
+
+function Mushroom({ x, y, r }: { x: number; y: number; r: number }) {
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <rect x={-r * 0.3} y="-2" width={r * 0.6} height="8" rx="2" fill="#FFF7E9" stroke="#687B5D" strokeWidth="0.8" />
+      <path d={`M${-r} -2 Q0 ${-r * 1.8} ${r} -2 Z`} fill="#E8B8C4" stroke="#687B5D" strokeWidth="0.8" />
+      <circle cx={-r * 0.35} cy={-r * 0.5} r="1.2" fill="#FFF7E9" />
+      <circle cx={r * 0.35} cy={-r * 0.7} r="1" fill="#FFF7E9" />
+    </g>
+  );
+}
+
+function Butterfly({ x, y }: { x: number; y: number }) {
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <ellipse cx="-3.5" cy="-2" rx="3.5" ry="4" fill="#C9B8D9" stroke="#687B5D" strokeWidth="0.6" />
+      <ellipse cx="3.5" cy="-2" rx="3.5" ry="4" fill="#E8B8C4" stroke="#687B5D" strokeWidth="0.6" />
+      <path d="M0 -5 V5" stroke="#687B5D" strokeWidth="1" />
+    </g>
+  );
+}
+
+function Star({ x, y }: { x: number; y: number }) {
+  return <path transform={`translate(${x} ${y})`} d="M0 -5 L1.4 -1.4 L5 0 L1.4 1.4 L0 5 L-1.4 1.4 L-5 0 L-1.4 -1.4 Z" fill="#C9B8D9" stroke="#687B5D" strokeWidth="0.6" />;
+}
+
+/** Tiny decorative garden strip. Decorations only ever accumulate. */
+export function GardenStrip({ blooms, decor = 'blooms' }: { blooms: number; decor?: Decor }) {
   const n = Math.min(blooms, 24);
   const colors = ['#E8B8C4', '#C9B8D9', '#FFF7E9', '#E8B8C4'];
+  const noun = decor === 'blooms' ? 'blooms' : decor;
   return (
-    <div className="garden-strip" role="img" aria-label={blooms === 0 ? 'Your garden is ready for its first bloom' : `${blooms} little blooms in your garden`}>
+    <div className="garden-strip" role="img" aria-label={blooms === 0 ? 'Your garden is ready for its first little addition' : `${blooms} little ${noun} in your garden`}>
       <svg viewBox="0 0 240 40" preserveAspectRatio="xMidYMax meet" aria-hidden="true">
         <path d="M0 36 Q60 30 120 36 T240 36" fill="none" stroke="#687B5D" strokeWidth="2" strokeLinecap="round" />
         {Array.from({ length: n }, (_, i) => {
           const x = 8 + (i * 224) / Math.max(n, 12);
           const h = 8 + ((i * 7) % 12);
+          if (decor === 'mushrooms') return <Mushroom key={i} x={x} y={32} r={3.5 + (i % 3)} />;
+          if (decor === 'butterflies') return <Butterfly key={i} x={x} y={30 - ((i * 5) % 18)} />;
+          if (decor === 'stars') return <Star key={i} x={x} y={8 + ((i * 9) % 22)} />;
           return (
             <g key={i}>
               <path d={`M${x} 36 v-${h}`} stroke="#687B5D" strokeWidth="1.5" />

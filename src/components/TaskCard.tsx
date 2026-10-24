@@ -3,7 +3,9 @@ import { useStore } from '../store';
 import { useUI } from '../ui';
 import { describeRecurrence, isDone, subtaskDone, type Occurrence } from '../lib/schedule';
 import { fmtDuration, fmtShort, fmtTime } from '../lib/dates';
-import { CATEGORIES } from '../lib/types';
+import { categoryOf } from '../lib/types';
+
+const CHEERS = ['A little progress is still progress.', 'Look at that, something new is blooming.', 'Lovely. Your garden thanks you.'];
 
 export function TaskCard({
   occ,
@@ -17,25 +19,28 @@ export function TaskCard({
   extra?: React.ReactNode;
 }) {
   const { task, date } = occ;
-  const { toggleDone, toggleSubtask, duplicateTask } = useStore();
-  const { openForm, askDelete } = useUI();
+  const { toggleDone, toggleSubtask, duplicateTask, notify, data } = useStore();
+  const { openForm, openOccurrence, askDelete } = useUI();
   const [open, setOpen] = useState(false);
   const done = isDone(task, date);
-  const cat = CATEGORIES.find((c) => c.id === task.category);
+  const cat = categoryOf(data.settings, task.category);
   const doneSubs = task.subtasks.filter((s) => subtaskDone(task, date, s.id)).length;
 
   return (
-    <article className={'card task' + (done ? ' done' : '') + (conflict ? ' conflict' : '')} data-priority={task.priority}>
+    <article className={'card task' + (done ? ' done' : '') + (conflict ? ' conflict' : '')} data-priority={task.priority} style={cat.color ? ({ '--cat': cat.color } as React.CSSProperties) : undefined}>
       <input
         type="checkbox"
         className="check"
         checked={done}
-        onChange={() => toggleDone(task.id, date)}
+        onChange={() => {
+          toggleDone(task.id, date);
+          if (!done && data.settings.showFairy && (data.blooms + 1) % 4 === 0) notify(CHEERS[(data.blooms / 4) % CHEERS.length | 0]);
+        }}
         aria-label={`${done ? 'Mark not done' : 'Mark done'}: ${task.title}`}
       />
       <div className="task-body">
         <div className="task-title">
-          <span aria-hidden="true">{cat?.icon} </span>
+          <span aria-hidden="true">{cat.icon} </span>
           <span className="t">{task.title}</span>
           {done && <span className="badge ok"> ✓ Done</span>}
         </div>
@@ -79,8 +84,13 @@ export function TaskCard({
           </button>
         )}
         <button className="btn ghost" onClick={() => openForm(task)} aria-label={`Edit ${task.title}`}>
-          Edit
+          {task.recurrence ? 'Edit series' : 'Edit'}
         </button>
+        {task.recurrence && (
+          <button className="btn ghost" onClick={() => openOccurrence(task, date)} aria-label={`Edit only this day of ${task.title}`}>
+            Edit this day
+          </button>
+        )}
         <button className="btn ghost" onClick={() => duplicateTask(task.id)} aria-label={`Duplicate ${task.title}`}>
           Copy
         </button>

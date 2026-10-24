@@ -167,3 +167,65 @@ export function toggleSkipStep(d: AppData, date: string, rid: string, stepId: st
     skipped: was ? day.skipped.filter((s) => s !== stepId) : [...day.skipped, stepId],
   });
 }
+
+/* ---------- edit one occurrence, templates ---------- */
+
+/** Change just one day of a repeating task: skip it in the series and add an edited one-off copy. */
+export function splitOccurrence(d: AppData, id: string, date: string, patch: Partial<Task>): AppData {
+  const t = d.tasks.find((x) => x.id === id);
+  if (!t) return d;
+  if (!t.recurrence) return updateTask(d, id, patch);
+  const skipped = mapTask(d, id, (x) => ({ ...x, skipped: [...new Set([...x.skipped, date])] }));
+  const copy: Task = {
+    ...t,
+    ...patch,
+    id: newId(),
+    recurrence: undefined,
+    date: patch.date ?? date,
+    done: false,
+    completions: [],
+    skipped: [],
+    subDone: {},
+    subtasks: (patch.subtasks ?? t.subtasks).map((s) => ({ ...s, id: newId(), done: false })),
+  };
+  return addTask(skipped, copy);
+}
+
+export function saveTemplate(d: AppData, name: string, tasks: Task[]): AppData {
+  const items = tasks.map((t) => ({
+    title: t.title,
+    notes: t.notes,
+    category: t.category,
+    priority: t.priority,
+    start: t.start,
+    end: t.end,
+    duration: t.duration,
+    subtasks: t.subtasks.map((s) => s.title),
+  }));
+  return { ...d, templates: [...d.templates, { id: newId(), name, items }] };
+}
+
+export function applyTemplate(d: AppData, templateId: string, date: string): AppData {
+  const tpl = d.templates.find((t) => t.id === templateId);
+  if (!tpl) return d;
+  const created: Task[] = tpl.items.map((i) => ({
+    id: newId(),
+    title: i.title,
+    notes: i.notes,
+    category: i.category,
+    priority: i.priority,
+    start: i.start,
+    end: i.end,
+    duration: i.duration,
+    date,
+    subtasks: i.subtasks.map((title) => ({ id: newId(), title, done: false })),
+    done: false,
+    completions: [],
+    skipped: [],
+    subDone: {},
+    createdAt: date + 'T00:00:00.000Z',
+  }));
+  return { ...d, tasks: [...d.tasks, ...created] };
+}
+
+export const deleteTemplate = (d: AppData, id: string): AppData => ({ ...d, templates: d.templates.filter((t) => t.id !== id) });

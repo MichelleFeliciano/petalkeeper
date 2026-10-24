@@ -38,9 +38,17 @@ export function Seeds() {
   const { data, today } = useStore();
   const { openForm } = useUI();
   const [filter, setFilter] = useState<Filter>('all');
+  const [q, setQ] = useState('');
   const list = useMemo(
-    () => data.tasks.filter((t) => matches(t, filter, today)).sort((a, b) => (a.date ?? '9999').localeCompare(b.date ?? '9999')),
-    [data.tasks, filter, today],
+    () =>
+      data.tasks
+        .filter((t) => {
+          const query = q.trim().toLowerCase();
+          if (query) return (t.title + ' ' + t.notes + ' ' + t.subtasks.map((x) => x.title).join(' ')).toLowerCase().includes(query);
+          return matches(t, filter, today);
+        })
+        .sort((a, b) => (a.date ?? '9999').localeCompare(b.date ?? '9999')),
+    [data.tasks, filter, today, q],
   );
 
   return (
@@ -51,9 +59,13 @@ export function Seeds() {
         <div className="actions left">
           <button className="btn primary" onClick={() => openForm()}>＋ Add a seed</button>
         </div>
+        <label className="search">
+          <span className="sr">Search tasks</span>
+          <input type="search" placeholder="Search all tasks…" value={q} onChange={(e) => setQ(e.target.value)} />
+        </label>
         <div className="tabs" role="group" aria-label="Filter tasks">
           {FILTERS.map((f) => (
-            <button key={f.id} className={'tab' + (filter === f.id ? ' on' : '')} aria-pressed={filter === f.id} onClick={() => setFilter(f.id)}>
+            <button key={f.id} className={'tab' + (filter === f.id ? ' on' : '')} aria-pressed={filter === f.id && !q} onClick={() => setFilter(f.id)}>
               {f.label}
             </button>
           ))}
@@ -61,7 +73,7 @@ export function Seeds() {
       </header>
       {list.length === 0 && (
         <p className="empty">
-          {filter === 'all' || filter === 'unscheduled'
+          {q ? 'Nothing matches that search.' : filter === 'all' || filter === 'unscheduled'
             ? 'Your seed pouch is empty. Add a task whenever you\'re ready.'
             : 'Nothing here right now. Your garden is at peace.'}
         </p>

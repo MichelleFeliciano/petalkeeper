@@ -3,6 +3,8 @@ import { useStore } from '../store';
 import { Modal } from '../components/Modal';
 import { exportJSON, parseImport } from '../lib/storage';
 import { todayISO } from '../lib/dates';
+import { buildICS, downloadText } from '../lib/ics';
+import { newId } from '../lib/schedule';
 
 export function Shed() {
   const s = useStore();
@@ -10,6 +12,17 @@ export function Shed() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [confirm, setConfirm] = useState<'sample' | 'all' | null>(null);
+  const [cat, setCat] = useState({ label: '', icon: '🌸', color: '#E8B8C4' });
+  const [permMsg, setPermMsg] = useState('');
+
+  const toggleNotifications = async (on: boolean) => {
+    setPermMsg('');
+    if (!on) return s.updateSettings({ notifications: false });
+    if (typeof Notification === 'undefined') return setPermMsg('This browser does not support notifications.');
+    const p = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+    if (p === 'granted') s.updateSettings({ notifications: true });
+    else setPermMsg('Notifications were not allowed, so reminders stay off. You can allow them in your browser settings.');
+  };
 
   const exportNow = () => {
     const blob = new Blob([exportJSON(s.data)], { type: 'application/json' });
@@ -19,6 +32,7 @@ export function Shed() {
     a.download = `petalkeeper-backup-${todayISO()}.json`;
     a.click();
     URL.revokeObjectURL(url);
+    s.updateSettings({ lastBackup: todayISO() });
     setMsg({ ok: true, text: 'Backup saved to your downloads folder.' });
   };
 
@@ -75,7 +89,59 @@ export function Shed() {
         </div>
         <label className="inline"><input type="checkbox" checked={settings.showFairy} onChange={(e) => s.updateSettings({ showFairy: e.target.checked })} /> Show the garden fairy and her messages</label>
         <label className="inline"><input type="checkbox" checked={settings.showGarden} onChange={(e) => s.updateSettings({ showGarden: e.target.checked })} /> Show the little blooming garden</label>
-        <p className="hint">Reminders/notifications are not included in this version. The app keeps working fully without them.</p>
+        <label>
+          Garden decorations
+          <select value={settings.decor} onChange={(e) => s.updateSettings({ decor: e.target.value as typeof settings.decor })}>
+            <option value="blooms">Flowers</option>
+            <option value="mushrooms">Mushrooms</option>
+            <option value="butterflies">Butterflies</option>
+            <option value="stars">Stars</option>
+          </select>
+        </label>
+      </section>
+
+      <section className="card form" aria-labelledby="nt-h">
+        <h2 id="nt-h">Reminders</h2>
+        <label className="inline">
+          <input type="checkbox" checked={settings.notifications} onChange={(e) => void toggleNotifications(e.target.checked)} /> Gentle reminders for timed activities
+        </label>
+        {settings.notifications && (
+          <label>
+            Remind me this many minutes before
+            <input type="number" min="0" step="5" value={settings.notifyLead} onChange={(e) => s.updateSettings({ notifyLead: Math.max(0, Number(e.target.value) || 0) })} />
+          </label>
+        )}
+        {permMsg && <p className="error" role="alert">{permMsg}</p>}
+        <p className="hint">Reminders only appear while Petalkeeper is open in a browser tab. If it's closed, nothing can be delivered. Everything works fine with reminders off.</p>
+      </section>
+
+      <section className="card form" aria-labelledby="cc-h">
+        <h2 id="cc-h">Your own categories</h2>
+        {settings.customCategories.length > 0 && (
+          <ul className="sublist">
+            {settings.customCategories.map((c) => (
+              <li key={c.id}>
+                <span><span style={{ color: c.color }} aria-hidden="true">●</span> {c.icon} {c.label}</span>
+                <button className="btn ghost" aria-label={`Remove category ${c.label}`} onClick={() => s.updateSettings({ customCategories: settings.customCategories.filter((x) => x.id !== c.id) })}>Remove</button>
+              </li>
+            ))}
+          </ul>
+        )}
+        <form
+          className="row"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (!cat.label.trim()) return;
+            s.updateSettings({ customCategories: [...settings.customCategories, { id: 'c-' + newId(), label: cat.label.trim(), icon: cat.icon || '🌸', color: cat.color }] });
+            setCat({ ...cat, label: '' });
+          }}
+        >
+          <label>Name<input value={cat.label} onChange={(e) => setCat({ ...cat, label: e.target.value })} placeholder="e.g. Pets" /></label>
+          <label>Emoji<input value={cat.icon} maxLength={4} onChange={(e) => setCat({ ...cat, icon: e.target.value })} /></label>
+          <label>Color<input type="color" value={cat.color} onChange={(e) => setCat({ ...cat, color: e.target.value })} /></label>
+          <button className="btn" type="submit">Add category</button>
+        </form>
+        <p className="hint">Tasks in a removed category keep working and show as "Other".</p>
       </section>
 
       <section className="card" aria-labelledby="bk-h">
@@ -86,6 +152,7 @@ export function Shed() {
         <div className="actions left">
           <button className="btn primary" onClick={exportNow}>Export backup (JSON)</button>
           <button className="btn" onClick={() => fileRef.current?.click()}>Import backup…</button>
+          <button className="btn" onClick={() => downloadText('petalkeeper-calendar.ics', buildICS(s.data.tasks, todayISO(), 90, settings.defaultDuration), 'text/calendar')}>Export next 90 days (.ics)</button>
           <input
             ref={fileRef}
             type="file"
@@ -99,6 +166,7 @@ export function Shed() {
             }}
           />
         </div>
+        <p className="hint">{settings.lastBackup ? `Last backup: ${settings.lastBackup}.` : 'No backup made yet.'}</p>
         {msg && <p role="status" className={msg.ok ? 'ok-msg' : 'error'}>{msg.text}</p>}
         {s.saveFailed && <p className="error" role="alert">This browser couldn't save your data (private mode or full storage). Please export a backup.</p>}
       </section>

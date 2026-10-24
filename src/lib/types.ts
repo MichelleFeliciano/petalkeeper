@@ -1,17 +1,14 @@
-export type Category =
-  | 'morning'
-  | 'evening'
-  | 'work'
-  | 'appointment'
-  | 'chores'
-  | 'errands'
-  | 'health'
-  | 'exercise'
-  | 'projects'
-  | 'relax'
-  | 'other';
+/** built-in ids plus any custom category id */
+export type Category = string;
 
-export const CATEGORIES: { id: Category; label: string; icon: string }[] = [
+export interface CategoryDef {
+  id: Category;
+  label: string;
+  icon: string;
+  color?: string;
+}
+
+export const CATEGORIES: CategoryDef[] = [
   { id: 'morning', label: 'Morning routine', icon: '🌅' },
   { id: 'evening', label: 'Evening routine', icon: '🌙' },
   { id: 'work', label: 'Work', icon: '💼' },
@@ -24,6 +21,14 @@ export const CATEGORIES: { id: Category; label: string; icon: string }[] = [
   { id: 'relax', label: 'Relaxation & free time', icon: '🍃' },
   { id: 'other', label: 'Other', icon: '🌸' },
 ];
+
+export function allCategories(s: Settings): CategoryDef[] {
+  return [...CATEGORIES, ...s.customCategories];
+}
+
+export function categoryOf(s: Settings, id: Category): CategoryDef {
+  return allCategories(s).find((c) => c.id === id) ?? CATEGORIES[CATEGORIES.length - 1];
+}
 
 export type Priority = 'low' | 'normal' | 'high';
 
@@ -98,6 +103,32 @@ export interface Settings {
   defaultPage: 'today' | 'rituals' | 'path' | 'seeds';
   showFairy: boolean;
   showGarden: boolean;
+  notifications: boolean;
+  /** minutes before a timed activity to send a reminder */
+  notifyLead: number;
+  decor: 'blooms' | 'mushrooms' | 'butterflies' | 'stars';
+  customCategories: CategoryDef[];
+  /** ISO date of last export, for the gentle backup nudge */
+  lastBackup?: string;
+  /** hide the backup nudge until this ISO date */
+  backupSnooze?: string;
+}
+
+export interface TemplateItem {
+  title: string;
+  notes: string;
+  category: Category;
+  priority: Priority;
+  start?: string;
+  end?: string;
+  duration?: number;
+  subtasks: string[];
+}
+
+export interface Template {
+  id: string;
+  name: string;
+  items: TemplateItem[];
 }
 
 export interface AppData {
@@ -108,6 +139,7 @@ export interface AppData {
   settings: Settings;
   /** lifetime count of little completions; only ever grows */
   blooms: number;
+  templates: Template[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -118,4 +150,8 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultPage: 'today',
   showFairy: true,
   showGarden: true,
+  notifications: false,
+  notifyLead: 10,
+  decor: 'blooms',
+  customCategories: [],
 };

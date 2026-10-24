@@ -6,20 +6,21 @@ import type { Task } from './lib/types';
 
 interface UI {
   openForm: (task?: Task, defaults?: Partial<Task>) => void;
+  openOccurrence: (task: Task, date: string) => void;
   askDelete: (task: Task, date: string) => void;
 }
 
 const Ctx = createContext<UI | null>(null);
 
 export function UIProvider({ children }: { children: ReactNode }) {
-  const [form, setForm] = useState<{ task?: Task; defaults?: Partial<Task> } | null>(null);
+  const [form, setForm] = useState<{ task?: Task; defaults?: Partial<Task>; occ?: string } | null>(null);
   const [del, setDel] = useState<{ task: Task; date: string } | null>(null);
   const { deleteTask, deleteOccurrence } = useStore();
 
   return (
-    <Ctx.Provider value={{ openForm: (task, defaults) => setForm({ task, defaults }), askDelete: (task, date) => setDel({ task, date }) }}>
+    <Ctx.Provider value={{ openForm: (task, defaults) => setForm({ task, defaults }), openOccurrence: (task, date) => setForm({ task, occ: date }), askDelete: (task, date) => setDel({ task, date }) }}>
       {children}
-      {form && <TaskForm task={form.task} defaults={form.defaults} onClose={() => setForm(null)} />}
+      {form && <TaskForm task={form.task} defaults={form.defaults} occurrenceDate={form.occ} onClose={() => setForm(null)} />}
       {del && (
         <Modal title="Remove this?" onClose={() => setDel(null)}>
           <p>

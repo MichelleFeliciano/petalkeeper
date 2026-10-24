@@ -3,18 +3,18 @@ import { Modal } from './Modal';
 import { useStore } from '../store';
 import { makeTask, newId } from '../lib/schedule';
 import { toMinutes, fromMinutes } from '../lib/dates';
-import { CATEGORIES, type Category, type Priority, type RecurFreq, type Task } from '../lib/types';
+import { allCategories, type Category, type Priority, type RecurFreq, type Task } from '../lib/types';
 
 const DAY_LETTERS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-export function TaskForm({ task, defaults, onClose }: { task?: Task; defaults?: Partial<Task>; onClose: () => void }) {
-  const { addTask, updateTask, data } = useStore();
+export function TaskForm({ task, defaults, occurrenceDate, onClose }: { task?: Task; defaults?: Partial<Task>; occurrenceDate?: string; onClose: () => void }) {
+  const { addTask, updateTask, splitOccurrence, data } = useStore();
   const init = task ?? defaults ?? {};
   const [title, setTitle] = useState(init.title ?? '');
   const [notes, setNotes] = useState(init.notes ?? '');
   const [category, setCategory] = useState<Category>(init.category ?? 'other');
   const [priority, setPriority] = useState<Priority>(init.priority ?? 'normal');
-  const [date, setDate] = useState(init.date ?? '');
+  const [date, setDate] = useState(occurrenceDate ?? init.date ?? '');
   const [start, setStart] = useState(init.start ?? '');
   const [end, setEnd] = useState(init.end ?? '');
   const [duration, setDuration] = useState(init.duration ? String(init.duration) : '');
@@ -37,7 +37,7 @@ export function TaskForm({ task, defaults, onClose }: { task?: Task; defaults?: 
     e.preventDefault();
     if (!title.trim()) return setError('Please give this a name.');
     if (start && end && toMinutes(end) <= toMinutes(start)) return setError('The end time should come after the start time.');
-    if (freq !== 'none' && !date) return setError('Pick a start date for something that repeats.');
+    if (!occurrenceDate && freq !== 'none' && !date) return setError('Pick a start date for something that repeats.');
     if (freq === 'days' && days.length === 0) return setError('Choose at least one day of the week.');
     if (until && date && until < date) return setError('The end date should not be before the start date.');
     let dur = duration ? Math.max(1, parseInt(duration, 10) || 0) : undefined;
@@ -56,7 +56,8 @@ export function TaskForm({ task, defaults, onClose }: { task?: Task; defaults?: 
       subtasks: subs,
       recurrence: freq === 'none' ? undefined : { freq, days: freq === 'days' ? days : undefined, until: until || undefined },
     };
-    if (task) updateTask(task.id, patch);
+    if (task && occurrenceDate) splitOccurrence(task.id, occurrenceDate, { ...patch, recurrence: undefined });
+    else if (task) updateTask(task.id, patch);
     else addTask(makeTask({ ...patch, title: title.trim() }));
     onClose();
   };
@@ -69,9 +70,10 @@ export function TaskForm({ task, defaults, onClose }: { task?: Task; defaults?: 
   };
 
   return (
-    <Modal title={task ? 'Edit activity' : 'Add to your garden'} onClose={onClose} wide>
+    <Modal title={occurrenceDate ? 'Edit just this day' : task ? 'Edit activity' : 'Add to your garden'} onClose={onClose} wide>
       <form onSubmit={submit} className="form" noValidate>
-        {task?.recurrence && <p className="hint">This repeats, so changes here apply to the whole series.</p>}
+        {task?.recurrence && !occurrenceDate && <p className="hint">This repeats, so changes here apply to the whole series.</p>}
+        {occurrenceDate && <p className="hint">Only this day changes. The rest of the series stays as it is.</p>}
         <label>
           Name
           <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="What would you like to tend to?" />
@@ -80,7 +82,7 @@ export function TaskForm({ task, defaults, onClose }: { task?: Task; defaults?: 
           <label>
             Category
             <select value={category} onChange={(e) => setCategory(e.target.value as Category)}>
-              {CATEGORIES.map((c) => (
+              {allCategories(data.settings).map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.icon} {c.label}
                 </option>
@@ -121,6 +123,7 @@ export function TaskForm({ task, defaults, onClose }: { task?: Task; defaults?: 
             <input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
           </label>
         </fieldset>
+        {!occurrenceDate && (
         <fieldset>
           <legend>Repeat</legend>
           <label>
@@ -154,6 +157,7 @@ export function TaskForm({ task, defaults, onClose }: { task?: Task; defaults?: 
             </label>
           )}
         </fieldset>
+        )}
         <fieldset>
           <legend>Smaller steps</legend>
           <ul className="sublist">

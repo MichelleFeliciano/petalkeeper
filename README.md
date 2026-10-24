@@ -70,9 +70,24 @@ Any free static host (Netlify, Cloudflare Pages) also works with `dist/`. Rememb
 - The fairy and garden are original inline SVG (`src/components/Fairy.tsx`), four poses: welcome, focus, rest, encouragement. No remote assets or fonts.
 - Light and dark ("twilight") themes; respects reduced motion; keyboard-navigable with visible focus; completion is shown with text/✓ as well as color.
 
-## Not included in this version
+## Extras
 
-- Browser notification reminders (they can't be delivered reliably when the browser is closed without a backend).
-- Drag-and-drop, search, schedule templates, weekly summaries.
-- Editing a single occurrence of a recurring task in place: you can delete or move one occurrence (Adjust My Day / Garden Path "Move to…" create a one-off copy), while the Edit form changes the whole series.
+- **Hours view** on Today's Garden (List / Hours toggle), **Print** buttons, and a print-friendly layout.
+- **Edit just this day** of a repeating task (the rest of the series is untouched).
+- **Undo** for deletes, moves, copies and templates (a few seconds after the change).
+- **Day templates:** save a day, add it to any other day.
+- **Search** across all tasks in the Seed Pouch.
+- **Drag and drop** tasks between days on the Garden Path and reorder routine steps by dragging while editing.
+- **Guide me:** step-by-step routine mode with an optional timer for steps that have minutes.
+- **Week in review:** a kind summary, with no scores or streaks.
+- **Calendar export (.ics):** one week from the Garden Path, or the next 90 days from the Garden Shed.
+- **Custom categories** (name, emoji, color) and four garden decoration styles.
+- **Backup nudge:** a gentle note on Today after about three weeks without an export.
+- **Install as an app / offline:** production builds register a small service worker and web manifest, so a browser can install Petalkeeper and it keeps working offline. (It only registers on the built site, not `npm run dev`.)
+- **Reminders:** optional browser notifications for timed activities, enabled in the Garden Shed. They only appear while Petalkeeper is open in a browser tab.
+
+## Not included
+
+- Syncing between devices. It would need a server or a cloud account, which conflicts with the private, no-account design. Use export/import, or the `.ics` export for calendar apps.
+- Reminders when the browser is completely closed.
 - Medication checklist items are your own reminders, not medical advice.

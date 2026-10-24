@@ -69,5 +69,6 @@ export function sampleData(): AppData {
     routineLog: {},
     settings: { ...DEFAULT_SETTINGS },
     blooms: 0,
+    templates: [],
   };
 }

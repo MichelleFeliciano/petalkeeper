@@ -1,0 +1,14 @@
+{
+  "name": "Petalkeeper",
+  "short_name": "Petalkeeper",
+  "description": "Tend to what matters. A gentle personal planner.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#FFF7E9",
+  "theme_color": "#A8B99A",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

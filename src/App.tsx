@@ -3,6 +3,7 @@ import { StoreProvider, useStore } from './store';
 import { itemsOn, isDone } from './lib/schedule';
 import { fmtTime, nowMinutes, toMinutes } from './lib/dates';
 import { UIProvider } from './ui';
+import { SyncProvider } from './sync';
 import { Today } from './pages/Today';
 import { Rituals } from './pages/Rituals';
 import { Path } from './pages/Path';
@@ -115,9 +116,11 @@ function Shell() {
 export default function App() {
   return (
     <StoreProvider>
-      <UIProvider>
-        <Shell />
-      </UIProvider>
+      <SyncProvider>
+        <UIProvider>
+          <Shell />
+        </UIProvider>
+      </SyncProvider>
     </StoreProvider>
   );
 }

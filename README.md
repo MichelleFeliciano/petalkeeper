@@ -86,8 +86,24 @@ Any free static host (Netlify, Cloudflare Pages) also works with `dist/`. Rememb
 - **Install as an app / offline:** production builds register a small service worker and web manifest, so a browser can install Petalkeeper and it keeps working offline. (It only registers on the built site, not `npm run dev`.)
 - **Reminders:** optional browser notifications for timed activities, enabled in the Garden Shed. They only appear while Petalkeeper is open in a browser tab.
 
+## Phone + computer sync
+
+Petalkeeper syncs through a **private GitHub repository you own**. There is no other service, and no server of ours. Your schedule is only ever written to that private repo.
+
+1. Create a **private** repo on github.com (e.g. `petalkeeper-data`, tick "Add a README"). Keep it separate from the app's source repo.
+2. Create a *fine-grained personal access token*: Settings → Developer settings → Personal access tokens → Fine-grained. Repository access: **only that repo**. Permissions: **Contents → Read and write**.
+3. In Petalkeeper: Garden Shed → *Sync between devices* → enter `owner/petalkeeper-data` and the token → Connect. Do the same on the other device. When connecting a new device that already has cloud data, choose "Use the cloud copy here".
+
+How it behaves: changes sync a few seconds after you make them, when you open or return to the app, and every ~90 seconds while it is visible. Edits made on two devices are merged (new items from both are kept, deletions carry over, and if the *same* item was changed on both, the device you're syncing from wins). If you're offline, everything keeps working and syncs later. The token is stored only in that browser's storage and is never included in backups or in the cloud copy. Keep exporting backups too, since sync isn't a backup of last resort.
+
+## Put it on your phone
+
+The app must be hosted at a web address so your phone can open it. Hosting is free:
+
+- **GitHub Pages** (workflow included at `.github/workflows/deploy.yml`): push this project to a GitHub repo, then Settings → Pages → Source: *GitHub Actions*. Free Pages needs a **public** source repo. That is fine here because no personal data lives in the code repo (your schedule lives only in the private data repo and on your devices). If you want the code private, use Cloudflare Pages or Netlify instead (both free; build command `npm run build`, output folder `dist`).
+- Open the address on your phone, then use the browser's *Add to Home Screen* / *Install app*. It then opens like a normal app and works offline.
+
 ## Not included
 
-- Syncing between devices. It would need a server or a cloud account, which conflicts with the private, no-account design. Use export/import, or the `.ics` export for calendar apps.
 - Reminders when the browser is completely closed.
 - Medication checklist items are your own reminders, not medical advice.

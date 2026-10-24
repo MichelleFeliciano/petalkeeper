@@ -5,11 +5,14 @@ import { exportJSON, parseImport } from '../lib/storage';
 import { todayISO } from '../lib/dates';
 import { buildICS, downloadText } from '../lib/ics';
 import { newId } from '../lib/schedule';
+import { SyncPanel } from '../components/SyncPanel';
+import { useSync } from '../sync';
 
 export function Shed() {
   const s = useStore();
   const { settings } = s.data;
   const fileRef = useRef<HTMLInputElement>(null);
+  const syncing = !!useSync().config;
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [confirm, setConfirm] = useState<'sample' | 'all' | null>(null);
   const [cat, setCat] = useState({ label: '', icon: '🌸', color: '#E8B8C4' });
@@ -144,6 +147,8 @@ export function Shed() {
         <p className="hint">Tasks in a removed category keep working and show as "Other".</p>
       </section>
 
+      <SyncPanel />
+
       <section className="card" aria-labelledby="bk-h">
         <h2 id="bk-h">Backup &amp; restore</h2>
         <p>
@@ -183,7 +188,7 @@ export function Shed() {
         <Modal title={confirm === 'all' ? 'Erase everything?' : 'Reset to sample data?'} onClose={() => setConfirm(null)}>
           <p>
             {confirm === 'all'
-              ? 'All activities, routines and history will be removed from this browser. Consider exporting a backup first.'
+              ? `All activities, routines and history will be removed from this browser.${syncing ? ' Sync is on, so your other devices will be cleared too.' : ''} Consider exporting a backup first.`
               : 'Your current activities and routines will be replaced with the editable examples.'}
           </p>
           <div className="actions">

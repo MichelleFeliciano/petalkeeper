@@ -181,3 +181,6 @@ h2 .tabs.inline { display: inline-flex; margin-left: 0.8rem; vertical-align: mid
   .week-grid { grid-template-columns: repeat(7, 1fr); }
   .mini select, .move { display: none; }
 }
+.steps-help { padding-left: 1.2rem; margin: 0.4rem 0; } .steps-help li { margin: 0.3rem 0; }
+details summary { cursor: pointer; margin: 0.4rem 0; }
+code { background: rgba(168, 185, 154, 0.3); padding: 0 4px; border-radius: 4px; }

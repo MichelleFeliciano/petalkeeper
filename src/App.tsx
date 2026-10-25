@@ -3,7 +3,9 @@ import { StoreProvider, useStore } from './store';
 import { itemsOn, isDone } from './lib/schedule';
 import { fmtTime, nowMinutes, toMinutes } from './lib/dates';
 import { UIProvider } from './ui';
-import { SyncProvider } from './sync';
+import { SyncProvider, useSync } from './sync';
+import { LockGate, Tour } from './components/Gate';
+import { applyTextSize, getTextSize } from './lib/device';
 import { Today } from './pages/Today';
 import { Rituals } from './pages/Rituals';
 import { Path } from './pages/Path';
@@ -59,9 +61,29 @@ function ToastBar() {
   );
 }
 
+/** A small "is my other device up to date?" line under the menu. Tap it to open the sync settings. */
+function SyncChip({ onOpen }: { onOpen: () => void }) {
+  const sync = useSync();
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => tick((n) => n + 1), 30_000);
+    return () => clearInterval(t);
+  }, []);
+  if (!sync.config) return null;
+  const mins = sync.lastSync ? Math.floor((Date.now() - new Date(sync.lastSync).getTime()) / 60000) : null;
+  const text =
+    sync.status === 'syncing' ? 'Syncing…' : sync.status === 'error' ? 'Sync problem. Tap to see' : mins === null ? 'Sync is on' : mins < 1 ? 'Synced just now' : `Synced ${mins} min ago`;
+  return (
+    <button className={'sync-chip' + (sync.status === 'error' ? ' bad' : '')} onClick={onOpen} aria-label={`Sync status: ${text}. Open sync settings`}>
+      <span aria-hidden="true">{sync.status === 'error' ? '⚠️' : '☁️'}</span> {text}
+    </button>
+  );
+}
+
 function Shell() {
   const { data } = useStore();
   useReminders();
+  useEffect(() => applyTextSize(getTextSize()), []);
   const [page, setPage] = useState<PageId>(() => fromHash() ?? data.settings.defaultPage);
 
   useEffect(() => {
@@ -100,6 +122,7 @@ function Shell() {
             </button>
           ))}
         </nav>
+        <SyncChip onOpen={() => go('shed')} />
       </aside>
       <main id="main" tabIndex={-1}>
         {page === 'today' && <Today />}
@@ -109,6 +132,7 @@ function Shell() {
         {page === 'shed' && <Shed />}
       </main>
       <ToastBar />
+      <Tour />
     </div>
   );
 }
@@ -118,7 +142,9 @@ export default function App() {
     <StoreProvider>
       <SyncProvider>
         <UIProvider>
-          <Shell />
+          <LockGate>
+            <Shell />
+          </LockGate>
         </UIProvider>
       </SyncProvider>
     </StoreProvider>

@@ -70,5 +70,8 @@ export function sampleData(): AppData {
     settings: { ...DEFAULT_SETTINGS },
     blooms: 0,
     templates: [],
+    counters: [],
+    counterLog: {},
+    checkins: {},
   };
 }

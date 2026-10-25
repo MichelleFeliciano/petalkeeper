@@ -107,3 +107,12 @@ The app must be hosted at a web address so your phone can open it. Hosting is fr
 
 - Reminders when the browser is completely closed.
 - Medication checklist items are your own reminders, not medical advice.
+
+## Routines and daily extras (v1.3)
+
+- **Routines by part of the day** (Morning, Midday, Afternoon, Evening, Bedtime), optionally for certain weekdays, with ready-made starters (Wake-up, Laundry day, Therapy day, and more).
+- **Steps** can be essential (★, kept on gentle days), optional (never block a routine), or limited to certain weekdays.
+- **Today** has a "do this now" card, routines with checkboxes, pause (just today, 3 days, a week, until you resume) and gentle-day mode, little counters, and a private mood check-in.
+- **History** shows the last four weeks per routine with no streaks or scores; the week review includes routine and mood notes.
+- **Calendar nudges:** give a routine a nudge time, then export `.ics` from the Garden Shed so your phone's calendar can remind you even when the app is closed.
+- **This device:** text size, an optional casual PIN lock, and a welcome tour; these never sync.

@@ -6,6 +6,8 @@ import { todayISO } from '../lib/dates';
 import { buildICS, downloadText } from '../lib/ics';
 import { newId } from '../lib/schedule';
 import { SyncPanel } from '../components/SyncPanel';
+import { DevicePanel } from '../components/DevicePanel';
+import { buildRoutineICS } from '../lib/routines';
 import { useSync } from '../sync';
 
 const when = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
@@ -108,7 +110,8 @@ export function Shed() {
         <div className="row">
           <label>
             Theme
-            <select value={settings.theme} onChange={(e) => s.updateSettings({ theme: e.target.value as 'light' | 'dark' })}>
+            <select value={settings.theme} onChange={(e) => s.updateSettings({ theme: e.target.value as 'light' | 'dark' | 'system' })}>
+              <option value="system">Match my phone or computer</option>
               <option value="light">Sunlit cream</option>
               <option value="dark">Twilight garden</option>
             </select>
@@ -182,6 +185,8 @@ export function Shed() {
 
       <SyncPanel />
 
+      <DevicePanel />
+
       <section className="card" aria-labelledby="bk-h">
         <h2 id="bk-h">Backup &amp; restore</h2>
         <p>
@@ -191,6 +196,17 @@ export function Shed() {
           <button className="btn primary" onClick={exportNow}>Export backup (JSON)</button>
           <button className="btn" onClick={() => fileRef.current?.click()}>Import backup…</button>
           <button className="btn" onClick={() => downloadText('petalkeeper-calendar.ics', buildICS(s.data.tasks, todayISO(), 90, settings.defaultDuration), 'text/calendar')}>Export next 90 days (.ics)</button>
+          <button
+            className="btn"
+            onClick={() => {
+              const { text, count } = buildRoutineICS(s.data.routines, todayISO());
+              if (count === 0) return setMsg({ ok: false, text: 'No routine has a calendar nudge time yet. Edit a routine and set one.' });
+              downloadText('petalkeeper-routine-nudges.ics', text, 'text/calendar');
+              setMsg({ ok: true, text: `Saved ${count} repeating reminder${count === 1 ? '' : 's'}. Open the file to add them to your phone's calendar.` });
+            }}
+          >
+            Export routine nudges (.ics)
+          </button>
           <input
             ref={fileRef}
             type="file"

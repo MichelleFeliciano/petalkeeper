@@ -1,6 +1,6 @@
 import { isISODate, isTime } from './dates';
 import { sampleData } from './seed';
-import { DEFAULT_SETTINGS, PARTS, type AppData, type CategoryDef, type Settings, type Task, type Template } from './types';
+import { DEFAULT_SETTINGS, PARTS, type AppData, type CategoryDef, type Counter, type Mood, type Settings, type Task, type Template } from './types';
 
 export const STORAGE_KEY = 'petalkeeper.v1';
 
@@ -43,7 +43,9 @@ export function validateData(raw: unknown): ValidateResult {
     if (
       !isObj(r) || !isStr(r.id) || !isStr(r.name) || !PARTS.some((p) => p.id === r.kind) ||
       (r.days !== undefined && !(Array.isArray(r.days) && r.days.every((x) => Number.isInteger(x) && x >= 0 && x <= 6))) ||
-      !Array.isArray(r.steps) || !r.steps.every((s) => isObj(s) && isStr(s.id) && isStr(s.title))
+      (r.remindAt !== undefined && !isTime(r.remindAt)) ||
+      !Array.isArray(r.steps) ||
+      !r.steps.every((s) => isObj(s) && isStr(s.id) && isStr(s.title) && (s.days === undefined || (Array.isArray(s.days) && s.days.every((x) => Number.isInteger(x) && x >= 0 && x <= 6))))
     ) {
       return { ok: false, error: 'Some routines in the file are malformed.' };
     }
@@ -55,7 +57,7 @@ export function validateData(raw: unknown): ValidateResult {
   if (s.weekStart === 0 || s.weekStart === 1) settings.weekStart = s.weekStart;
   if (typeof s.defaultDuration === 'number' && s.defaultDuration > 0) settings.defaultDuration = s.defaultDuration;
   if (typeof s.buffer === 'number' && s.buffer >= 0) settings.buffer = s.buffer;
-  if (s.theme === 'light' || s.theme === 'dark') settings.theme = s.theme;
+  if (s.theme === 'light' || s.theme === 'dark' || s.theme === 'system') settings.theme = s.theme;
   if (s.defaultPage && ['today', 'rituals', 'path', 'seeds'].includes(s.defaultPage)) settings.defaultPage = s.defaultPage;
   if (typeof s.showFairy === 'boolean') settings.showFairy = s.showFairy;
   if (typeof s.showGarden === 'boolean') settings.showGarden = s.showGarden;
@@ -69,6 +71,36 @@ export function validateData(raw: unknown): ValidateResult {
   }
   if (isISODate(s.lastBackup)) settings.lastBackup = s.lastBackup;
   if (isISODate(s.backupSnooze)) settings.backupSnooze = s.backupSnooze;
+  if (isISODate(s.pausedFrom)) settings.pausedFrom = s.pausedFrom;
+  if (isISODate(s.pausedUntil)) settings.pausedUntil = s.pausedUntil;
+  if (isISODate(s.gentleOn)) settings.gentleOn = s.gentleOn;
+  let counters: Counter[] = [];
+  if (raw.counters !== undefined) {
+    if (!Array.isArray(raw.counters) || !raw.counters.every((c) => isObj(c) && isStr(c.id) && isStr(c.label) && isStr(c.icon) && typeof c.goal === 'number' && c.goal > 0)) {
+      return { ok: false, error: 'Counters in the file are malformed.' };
+    }
+    counters = raw.counters as Counter[];
+  }
+  const counterLog: AppData['counterLog'] = {};
+  if (isObj(raw.counterLog)) {
+    for (const [d, m] of Object.entries(raw.counterLog)) {
+      if (!isISODate(d) || !isObj(m)) continue;
+      const row: Record<string, number> = {};
+      for (const [id, n] of Object.entries(m)) if (typeof n === 'number' && n >= 0) row[id] = n;
+      counterLog[d] = row;
+    }
+  }
+  const checkins: AppData['checkins'] = {};
+  if (isObj(raw.checkins)) {
+    for (const [d, c] of Object.entries(raw.checkins)) {
+      if (!isISODate(d) || !isObj(c)) continue;
+      const mood = c.mood;
+      checkins[d] = {
+        ...(typeof mood === 'number' && mood >= 1 && mood <= 5 ? { mood: Math.round(mood) as Mood } : {}),
+        ...(isStr(c.note) && c.note ? { note: c.note } : {}),
+      };
+    }
+  }
   let templates: Template[] = [];
   if (raw.templates !== undefined) {
     if (
@@ -83,6 +115,9 @@ export function validateData(raw: unknown): ValidateResult {
     ok: true,
     data: {
       templates,
+      counters,
+      counterLog,
+      checkins,
       version: 1,
       tasks: raw.tasks as Task[],
       routines: raw.routines as AppData['routines'],

@@ -1,0 +1,11 @@
+import { readFileSync, writeFileSync } from 'node:fs';
+import { sub } from './lib.mjs';
+const T = 'src/pages/Today.tsx';
+let t = readFileSync(T, 'utf8').replace(/\r\n/g, '\n');
+const a = t.indexOf('/** Every routine, in order');
+const b = t.indexOf('export function Today');
+t = t.slice(0, a) + t.slice(b);
+t = t.replace("import { PARTS, currentPart } from '../lib/types';\nimport { routineDay } from '../lib/ops';\n", "import { DoNow, TodaysRoutines, Counters, CheckIn } from '../components/DailyExtras';\n");
+t = t.replace("import { findConflicts, isDone, itemsOn, routineOn }", "import { findConflicts, isDone, itemsOn }");
+t = t.replace("      <TodaysRoutines />\n", "      <DoNow />\n\n      <TodaysRoutines />\n\n      <Counters />\n\n      <CheckIn />\n");
+writeFileSync(T, t.replace(/\n/g, '\r\n'));

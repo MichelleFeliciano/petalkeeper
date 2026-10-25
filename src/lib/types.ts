@@ -96,12 +96,20 @@ export interface Routine {
   steps: RoutineStep[];
   /** weekdays it belongs to (0 = Sunday … 6 = Saturday). Empty or missing means every day. */
   days?: number[];
+  /** time (HH:MM) for a phone-calendar nudge when exported as .ics */
+  remindAt?: string;
 }
 
 export interface RoutineStep {
   id: string;
   title: string;
   minutes?: number;
+  /** kept on gentle days, when only the essentials are shown */
+  essential?: boolean;
+  /** a nice-to-have: never counts against finishing the routine */
+  optional?: boolean;
+  /** weekdays this step applies to (0 = Sunday); missing means every day the routine runs */
+  days?: number[];
 }
 
 /** progress is keyed by date, so a new day automatically starts fresh */
@@ -115,7 +123,7 @@ export interface Settings {
   weekStart: 0 | 1;
   defaultDuration: number;
   buffer: number;
-  theme: 'light' | 'dark';
+  theme: 'light' | 'dark' | 'system';
   defaultPage: 'today' | 'rituals' | 'path' | 'seeds';
   showFairy: boolean;
   showGarden: boolean;
@@ -128,6 +136,11 @@ export interface Settings {
   lastBackup?: string;
   /** hide the backup nudge until this ISO date */
   backupSnooze?: string;
+  /** routines are resting from this date through pausedUntil (inclusive) */
+  pausedFrom?: string;
+  pausedUntil?: string;
+  /** gentle (essentials-only) mode is on for this ISO date, and switches itself off the next day */
+  gentleOn?: string;
 }
 
 export interface TemplateItem {
@@ -147,6 +160,26 @@ export interface Template {
   items: TemplateItem[];
 }
 
+export interface Counter {
+  id: string;
+  label: string;
+  icon: string;
+  /** daily target; reaching it is a nice moment, never a requirement */
+  goal: number;
+}
+export type Mood = 1 | 2 | 3 | 4 | 5;
+export interface Checkin {
+  mood?: Mood;
+  note?: string;
+}
+export const MOODS: { id: Mood; icon: string; label: string }[] = [
+  { id: 1, icon: '😔', label: 'Heavy' },
+  { id: 2, icon: '😕', label: 'Low' },
+  { id: 3, icon: '😐', label: 'Okay' },
+  { id: 4, icon: '🙂', label: 'Good' },
+  { id: 5, icon: '😊', label: 'Bright' },
+];
+
 export interface AppData {
   version: 1;
   tasks: Task[];
@@ -156,6 +189,11 @@ export interface AppData {
   /** lifetime count of little completions; only ever grows */
   blooms: number;
   templates: Template[];
+  counters: Counter[];
+  /** date -> counter id -> count */
+  counterLog: Record<string, Record<string, number>>;
+  /** date -> how the day felt; private and optional */
+  checkins: Record<string, Checkin>;
 }
 
 export const DEFAULT_SETTINGS: Settings = {

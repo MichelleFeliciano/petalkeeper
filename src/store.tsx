@@ -64,7 +64,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = data.settings.theme;
+    const apply = () => {
+      const dark = data.settings.theme === 'dark' || (data.settings.theme === 'system' && !!window.matchMedia?.('(prefers-color-scheme: dark)').matches);
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+    };
+    apply();
+    if (data.settings.theme !== 'system' || !window.matchMedia) return;
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    mq.addEventListener?.('change', apply);
+    return () => mq.removeEventListener?.('change', apply);
   }, [data.settings.theme]);
 
   useEffect(() => {
@@ -101,7 +109,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       replaceAll: (d: AppData) => setData(d),
       resetSample: () => setData({ ...sampleData(), settings: data.settings }),
       resetEverything: () =>
-        setData({ version: 1, tasks: [], routines: [], routineLog: {}, settings: { ...DEFAULT_SETTINGS }, blooms: 0, templates: [] }),
+        setData({ version: 1, tasks: [], routines: [], routineLog: {}, settings: { ...DEFAULT_SETTINGS }, blooms: 0, templates: [], counters: [], counterLog: {}, checkins: {} }),
       notify: (text: string) => setToast({ id: ++toastId, text, undoable: false }),
       undo: () => {
         if (snap.current) setData(snap.current);

@@ -3,8 +3,11 @@ import { useStore } from '../store';
 import { Modal } from '../components/Modal';
 import { routineDay } from '../lib/ops';
 import { newId, routineDaysLabel, routineOn } from '../lib/schedule';
-import { fmtDuration } from '../lib/dates';
+import { addDays, fmtDuration } from '../lib/dates';
+import { historyFor, isGentle, isPaused, progressOf, recentTended, STARTERS, stepsFor } from '../lib/routines';
 import { PARTS, currentPart, partOf, type PartOfDay, type Routine } from '../lib/types';
+
+const DAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 function Bed({ done, total }: { done: number; total: number }) {
   // little flowers that appear as steps are finished
@@ -19,11 +22,28 @@ function Bed({ done, total }: { done: number; total: number }) {
   );
 }
 
+function DayChips({ days, onChange, weekStart, label, suffix = '' }: { days?: number[]; onChange: (d: number[]) => void; weekStart: 0 | 1; label: string; suffix?: string }) {
+  return (
+    <fieldset className="day-chips">
+      <legend>{label}</legend>
+      {(weekStart === 1 ? [1, 2, 3, 4, 5, 6, 0] : [0, 1, 2, 3, 4, 5, 6]).map((n) => {
+        const on = days?.includes(n) ?? false;
+        return (
+          <label key={n} className={'chip' + (on ? ' on' : '')}>
+            <input type="checkbox" aria-label={DAY_LONG[n] + suffix} checked={on} onChange={() => onChange(on ? (days ?? []).filter((x) => x !== n) : [...(days ?? []), n])} />
+            {DAY_LONG[n].slice(0, 3)}
+          </label>
+        );
+      })}
+    </fieldset>
+  );
+}
+
 function Guided({ routine, onClose }: { routine: Routine; onClose: () => void }) {
   const s = useStore();
   const { data, today } = s;
   const day = routineDay(data, today, routine.id);
-  const remaining = routine.steps.filter((st) => !day.done.includes(st.id) && !day.skipped.includes(st.id));
+  const remaining = stepsFor(routine, today, isGentle(data.settings, today)).filter((st) => !day.done.includes(st.id) && !day.skipped.includes(st.id));
   const [offset, setOffset] = useState(0);
   const cur = remaining.length ? remaining[offset % remaining.length] : undefined;
   const [left, setLeft] = useState<number | null>(null);
@@ -50,7 +70,7 @@ function Guided({ routine, onClose }: { routine: Routine; onClose: () => void })
       ) : (
         <>
           <p className="meta">{remaining.length} step{remaining.length === 1 ? '' : 's'} left. Take them one at a time.</p>
-          <p className="guided-step">{cur.title}</p>
+          <p className="guided-step">{cur.title}{cur.optional ? ' (optional)' : ''}</p>
           {left !== null && (
             <p className="guided-timer" aria-live="off">
               {Math.floor(left / 60)}:{String(left % 60).padStart(2, '0')}{' '}
@@ -68,19 +88,48 @@ function Guided({ routine, onClose }: { routine: Routine; onClose: () => void })
   );
 }
 
-function RoutineCard({ routine }: { routine: Routine }) {
+function History({ routine }: { routine: Routine }) {
+  const { data, today } = useStore();
+  // four weeks ending today, oldest first
+  const dates = Array.from({ length: 28 }, (_, i) => addDays(today, i - 27));
+  const marks = historyFor(data, routine, dates);
+  const r = recentTended(data, routine, today);
+  const text = r.scheduled === 0 ? 'Nothing scheduled in the last week.' : `Tended on ${r.tended} of the last ${r.scheduled} scheduled day${r.scheduled === 1 ? '' : 's'}.`;
+  return (
+    <details className="history">
+      <summary>Last four weeks · {text}</summary>
+      <div className="hist-grid" role="img" aria-label={`Last four weeks. ${text}`}>
+        {marks.map((m, i) => (
+          <span key={dates[i]} className={'hist ' + m} title={`${dates[i]}: ${m === 'all' ? 'all done' : m === 'some' ? 'some done' : m === 'none' ? 'not today' : 'not scheduled'}`}>
+            {m === 'all' ? '✿' : m === 'some' ? '❀' : ''}
+          </span>
+        ))}
+      </div>
+      <p className="hint">✿ everything done · ❀ some done · empty days are just resting. No streaks here.</p>
+    </details>
+  );
+}
+
+function RoutineCard({ routine, first, last }: { routine: Routine; first: boolean; last: boolean }) {
   const s = useStore();
   const { data, today } = s;
+  const gentle = isGentle(data.settings, today);
   const day = routineDay(data, today, routine.id);
+  const pr = progressOf(data, routine, today);
   const [editing, setEditing] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const [guided, setGuided] = useState(false);
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [newStep, setNewStep] = useState('');
   const [mins, setMins] = useState('');
-  const active = routine.steps.filter((st) => !day.skipped.includes(st.id));
-  const done = active.filter((st) => day.done.includes(st.id)).length;
+  const todays = stepsFor(routine, today, gentle);
+  const shown = editing ? routine.steps : todays;
+  const hidden = routine.steps.length - todays.length;
   const total = routine.steps.reduce((n, st) => n + (st.minutes ?? 0), 0);
+  const weekStart = data.settings.weekStart;
+
+  const patchStep = (id: string, patch: Partial<Routine['steps'][number]>) =>
+    s.setSteps(routine.id, routine.steps.map((x) => (x.id === id ? { ...x, ...patch } : x)));
 
   const move = (i: number, dir: -1 | 1) => {
     const steps = [...routine.steps];
@@ -110,16 +159,17 @@ function RoutineCard({ routine }: { routine: Routine }) {
         {routine.days && routine.days.length > 0 && <span className="badge">{routineDaysLabel(routine.days)}</span>}
         {!routineOn(routine, today) && <span className="meta">Not on today's list</span>}
         <span className="meta">
-          {done}/{active.length} done{total > 0 ? ` · about ${fmtDuration(total)}` : ''}
+          {pr.done}/{pr.total} done{total > 0 ? ` · about ${fmtDuration(total)}` : ''}
         </span>
-        <Bed done={done} total={active.length} />
+        <Bed done={pr.done} total={pr.total} />
         <button className="btn small" onClick={() => setGuided(true)}>Guide me</button>
         <button className="btn ghost" onClick={() => setEditing(!editing)}>
           {editing ? 'Done editing' : 'Edit'}
         </button>
       </div>
+      {gentle && hidden > 0 && !editing && <p className="hint">Gentle day: {hidden} step{hidden === 1 ? ' is' : 's are'} resting today.</p>}
       <ol className="ritual-steps">
-        {routine.steps.map((st, i) => {
+        {shown.map((st, i) => {
           const isDone = day.done.includes(st.id);
           const isSkipped = day.skipped.includes(st.id);
           return (
@@ -143,21 +193,26 @@ function RoutineCard({ routine }: { routine: Routine }) {
                 <input type="checkbox" className="check" checked={isDone} disabled={isSkipped} onChange={() => s.toggleStep(today, routine.id, st.id)} />
                 <span>
                   {editing ? (
-                    <input
-                      aria-label={`Step ${i + 1} name`}
-                      value={st.title}
-                      onChange={(e) => s.setSteps(routine.id, routine.steps.map((x) => (x.id === st.id ? { ...x, title: e.target.value } : x)))}
-                    />
+                    <input aria-label={`Step ${i + 1} name`} value={st.title} onChange={(e) => patchStep(st.id, { title: e.target.value })} />
                   ) : (
                     st.title
                   )}
                   {st.minutes ? <small> · {st.minutes} min</small> : null}
+                  {st.optional && <small> · optional</small>}
+                  {st.essential && !editing && <small> · ★</small>}
+                  {st.days && st.days.length > 0 && <small> · {routineDaysLabel(st.days)}</small>}
                   {isSkipped && <small> · skipped for today</small>}
                   {isDone && <small> ✓</small>}
                 </span>
               </label>
               {editing ? (
                 <span className="step-actions">
+                  <button className="btn ghost" aria-pressed={!!st.essential} onClick={() => patchStep(st.id, { essential: !st.essential })} aria-label={`${st.title}: essential on gentle days`} title="Essential on gentle days">
+                    {st.essential ? '★' : '☆'}
+                  </button>
+                  <button className="btn ghost" aria-pressed={!!st.optional} onClick={() => patchStep(st.id, { optional: !st.optional })} aria-label={`${st.title}: optional`} title="Optional">
+                    {st.optional ? '◔ optional' : '○'}
+                  </button>
                   <button className="btn ghost" onClick={() => move(i, -1)} disabled={i === 0} aria-label={`Move ${st.title} up`}>↑</button>
                   <button className="btn ghost" onClick={() => move(i, 1)} disabled={i === routine.steps.length - 1} aria-label={`Move ${st.title} down`}>↓</button>
                   <button className="btn ghost" onClick={() => s.setSteps(routine.id, routine.steps.filter((x) => x.id !== st.id))} aria-label={`Remove ${st.title}`}>✕</button>
@@ -166,6 +221,12 @@ function RoutineCard({ routine }: { routine: Routine }) {
                 <button className="btn ghost" onClick={() => s.toggleSkipStep(today, routine.id, st.id)}>
                   {isSkipped ? 'Bring back' : 'Skip today'}
                 </button>
+              )}
+              {editing && (
+                <details className="step-days">
+                  <summary>Days for “{st.title}”: {routineDaysLabel(st.days)}</summary>
+                  <DayChips suffix={` for ${st.title}`} days={st.days} weekStart={weekStart} label="Only on these days (none = whenever the routine runs)" onChange={(d) => patchStep(st.id, { days: d.length ? d : undefined })} />
+                </details>
               )}
             </li>
           );
@@ -179,24 +240,8 @@ function RoutineCard({ routine }: { routine: Routine }) {
             <input aria-label="Minutes (optional)" type="number" min="1" placeholder="min" value={mins} onChange={(e) => setMins(e.target.value)} style={{ maxWidth: 90 }} />
             <button className="btn" onClick={add}>Add step</button>
           </div>
-          <fieldset className="day-chips">
-            <legend>Which days? (none picked = every day)</legend>
-            {(data.settings.weekStart === 1 ? [1, 2, 3, 4, 5, 6, 0] : [0, 1, 2, 3, 4, 5, 6]).map((n) => {
-              const on = routine.days?.includes(n) ?? false;
-              const name = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][n];
-              return (
-                <label key={n} className={'chip' + (on ? ' on' : '')}>
-                  <input
-                    type="checkbox"
-                    aria-label={name}
-                    checked={on}
-                    onChange={() => s.setRoutineDays(routine.id, on ? (routine.days ?? []).filter((x) => x !== n) : [...(routine.days ?? []), n])}
-                  />
-                  {name.slice(0, 3)}
-                </label>
-              );
-            })}
-          </fieldset>
+          <p className="hint">★ keeps a step on gentle days. “optional” steps never stop a routine from counting as done.</p>
+          <DayChips days={routine.days} weekStart={weekStart} label="Which days is this routine for? (none picked = every day)" onChange={(d) => s.setRoutineDays(routine.id, d)} />
           <label className="inline">
             Part of the day{' '}
             <select value={routine.kind} onChange={(e) => s.setRoutineKind(routine.id, e.target.value as PartOfDay)}>
@@ -205,9 +250,19 @@ function RoutineCard({ routine }: { routine: Routine }) {
               ))}
             </select>
           </label>
-          <button className="btn danger small" onClick={() => setConfirmDel(true)}>Delete this routine</button>
+          <label className="inline">
+            Calendar nudge time (optional){' '}
+            <input type="time" aria-label="Calendar nudge time" value={routine.remindAt ?? ''} onChange={(e) => s.setRoutineRemind(routine.id, e.target.value || undefined)} />
+          </label>
+          <div className="actions left">
+            <button className="btn small" onClick={() => s.moveRoutine(routine.id, -1)} disabled={first} aria-label={`Move ${routine.name} up`}>Move routine up</button>
+            <button className="btn small" onClick={() => s.moveRoutine(routine.id, 1)} disabled={last} aria-label={`Move ${routine.name} down`}>Move routine down</button>
+            <button className="btn small" onClick={() => s.duplicateRoutine(routine.id)}>Duplicate</button>
+            <button className="btn danger small" onClick={() => setConfirmDel(true)}>Delete this routine</button>
+          </div>
         </>
       )}
+      {!editing && <History routine={routine} />}
       {guided && <Guided routine={routine} onClose={() => setGuided(false)} />}
       {confirmDel && (
         <Modal title="Delete routine?" onClose={() => setConfirmDel(false)}>
@@ -222,8 +277,51 @@ function RoutineCard({ routine }: { routine: Routine }) {
   );
 }
 
+/** Pause and gentle-day controls, shared by Today and Rituals */
+export function RestControls() {
+  const { data, today, updateSettings } = useStore();
+  const { settings } = data;
+  const paused = isPaused(settings, today);
+  const gentle = isGentle(settings, today);
+  const rest = (days: number | 'open') =>
+    updateSettings({ pausedFrom: today, pausedUntil: days === 'open' ? '9999-12-31' : addDays(today, days - 1) });
+  return (
+    <div className="rest card" role="group" aria-label="Rest options">
+      {paused ? (
+        <p>
+          🌙 Routines are resting{settings.pausedUntil && settings.pausedUntil < '9999' ? ` through ${settings.pausedUntil}` : ' until you resume'}. Nothing is missed.{' '}
+          <button className="btn small" onClick={() => updateSettings({ pausedFrom: undefined, pausedUntil: undefined })}>Resume routines</button>
+        </p>
+      ) : (
+        <div className="row">
+          <label className="inline">
+            <input type="checkbox" checked={gentle} onChange={(e) => updateSettings({ gentleOn: e.target.checked ? today : undefined })} /> Gentle day (essentials only)
+          </label>
+          <label className="inline">
+            Pause routines{' '}
+            <select
+              aria-label="Pause routines"
+              value=""
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v) rest(v === 'open' ? 'open' : Number(v));
+              }}
+            >
+              <option value="">…</option>
+              <option value="1">Just today</option>
+              <option value="3">3 days</option>
+              <option value="7">A week</option>
+              <option value="open">Until I resume</option>
+            </select>
+          </label>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function Rituals() {
-  const { data, addRoutine } = useStore();
+  const { data, addRoutine, addStarter, today } = useStore();
   // open on the current part of the day, or the next one that has a routine in it
   const [kind, setKind] = useState<PartOfDay>(() => {
     const at = PARTS.findIndex((p) => p.id === currentPart(new Date().getHours()));
@@ -233,6 +331,7 @@ export function Rituals() {
   const list = data.routines.filter((r) => r.kind === kind);
   const part = partOf(kind);
   const count = (k: string) => data.routines.filter((r) => r.kind === k).length;
+  const paused = isPaused(data.settings, today);
 
   return (
     <div className="page">
@@ -251,11 +350,34 @@ export function Rituals() {
           ))}
         </div>
       </header>
-      {list.map((r) => <RoutineCard key={r.id} routine={r} />)}
-      {list.length === 0 && <p className="empty">No {part.label.toLowerCase()} routine yet. Plant one whenever you like, for example "{kind === 'morning' ? 'Wake-up: shower, brush teeth' : part.label + ' reset'}".</p>}
-      <button className="btn primary" onClick={() => addRoutine(kind, `New ${part.label.toLowerCase()} routine`)}>
-        ＋ New {part.label.toLowerCase()} routine
-      </button>
+      <RestControls />
+      {paused && <p className="hint">Routines are paused, so they're hidden on Today. You can still edit them here.</p>}
+      {list.map((r, i) => <RoutineCard key={r.id} routine={r} first={i === 0} last={i === list.length - 1} />)}
+      {list.length === 0 && <p className="empty">No {part.label.toLowerCase()} routine yet. Plant one whenever you like, or start from a ready-made one below.</p>}
+      <div className="actions left">
+        <button className="btn primary" onClick={() => addRoutine(kind, `New ${part.label.toLowerCase()} routine`)}>
+          ＋ New {part.label.toLowerCase()} routine
+        </button>
+        <label className="inline">
+          Start from a ready-made one{' '}
+          <select
+            aria-label="Start from a ready-made routine"
+            value=""
+            onChange={(e) => {
+              const st = STARTERS.find((x) => x.name === e.target.value);
+              if (st) {
+                addStarter(st);
+                setKind(st.kind);
+              }
+            }}
+          >
+            <option value="">Choose…</option>
+            {STARTERS.map((st) => (
+              <option key={st.name} value={st.name}>{partOf(st.kind).icon} {st.name} — {st.blurb}</option>
+            ))}
+          </select>
+        </label>
+      </div>
     </div>
   );
 }

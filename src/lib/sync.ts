@@ -138,6 +138,19 @@ export function mergeData(base: AppData | null, local: AppData, remote: AppData)
     const [date, rid] = k.split('|');
     (routineLog[date] ??= {})[rid] = day;
   }
+  const counters = mergeMaps(base ? byId(base.counters) : new Map(), byId(local.counters), byId(remote.counters));
+  const flatten = <T,>(d: AppData | null, pick: (x: AppData) => Record<string, Record<string, T>>) => {
+    const m = new Map<string, T>();
+    if (d) for (const [date, row] of Object.entries(pick(d))) for (const [id, v] of Object.entries(row)) m.set(date + '|' + id, v);
+    return m;
+  };
+  const counts = mergeMaps(flatten(base, (x) => x.counterLog), flatten(local, (x) => x.counterLog), flatten(remote, (x) => x.counterLog), (l, r) => Math.max(l, r));
+  const counterLog: AppData['counterLog'] = {};
+  for (const [k, n] of counts) {
+    const [date, id] = k.split('|');
+    (counterLog[date] ??= {})[id] = n;
+  }
+  const checks = mergeMaps(new Map(Object.entries(base?.checkins ?? {})), new Map(Object.entries(local.checkins)), new Map(Object.entries(remote.checkins)));
   const keys = [...settingsMap(local).keys()];
   const sm = mergeMaps(settingsMap(base), settingsMap(local), settingsMap(remote));
   const settings = { ...local.settings } as unknown as Record<string, unknown>;
@@ -148,6 +161,9 @@ export function mergeData(base: AppData | null, local: AppData, remote: AppData)
     tasks: [...tasks.values()],
     routines: [...routines.values()],
     templates: [...templates.values()],
+    counters: [...counters.values()],
+    counterLog,
+    checkins: Object.fromEntries(checks),
     routineLog,
     settings: settings as unknown as AppData['settings'],
     blooms: Math.max(local.blooms, remote.blooms),

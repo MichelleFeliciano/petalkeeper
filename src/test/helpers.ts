@@ -8,4 +8,7 @@ export const emptyForTest = (): AppData => ({
   settings: { ...DEFAULT_SETTINGS },
   blooms: 0,
   templates: [],
+  counters: [],
+  counterLog: {},
+  checkins: {},
 });

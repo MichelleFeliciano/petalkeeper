@@ -1,6 +1,7 @@
 import { newId, isDone } from './schedule';
 import { toMinutes } from './dates';
-import type { AppData, Routine, RoutineDay, RoutineStep, Settings, Task } from './types';
+import type { AppData, Checkin, Routine, RoutineDay, RoutineStep, Settings, Task } from './types';
+import type { Starter } from './routines';
 
 /** Pure data transformations. The store wraps these so they are easy to test. */
 
@@ -244,3 +245,79 @@ export function applyTemplate(d: AppData, templateId: string, date: string): App
 }
 
 export const deleteTemplate = (d: AppData, id: string): AppData => ({ ...d, templates: d.templates.filter((t) => t.id !== id) });
+
+/* ---------- routine extras ---------- */
+
+export const addStarter = (d: AppData, s: Starter): AppData => ({
+  ...d,
+  routines: [
+    ...d.routines,
+    {
+      id: newId(),
+      kind: s.kind,
+      name: s.name,
+      ...(s.days ? { days: s.days } : {}),
+      steps: s.steps.map((st) => ({ id: newId(), ...st })),
+    },
+  ],
+});
+
+export const duplicateRoutine = (d: AppData, id: string): AppData => {
+  const r = d.routines.find((x) => x.id === id);
+  if (!r) return d;
+  const copy: Routine = { ...r, id: newId(), name: `${r.name} (copy)`, steps: r.steps.map((st) => ({ ...st, id: newId() })) };
+  const at = d.routines.indexOf(r);
+  return { ...d, routines: [...d.routines.slice(0, at + 1), copy, ...d.routines.slice(at + 1)] };
+};
+
+/** move a routine up or down among the routines of the same part of the day */
+export const moveRoutine = (d: AppData, id: string, dir: -1 | 1): AppData => {
+  const r = d.routines.find((x) => x.id === id);
+  if (!r) return d;
+  const same = d.routines.filter((x) => x.kind === r.kind);
+  const j = same.indexOf(r) + dir;
+  if (j < 0 || j >= same.length) return d;
+  const other = same[j];
+  const routines = [...d.routines];
+  const a = routines.indexOf(r);
+  const b = routines.indexOf(other);
+  [routines[a], routines[b]] = [routines[b], routines[a]];
+  return { ...d, routines };
+};
+
+export const setRoutineRemind = (d: AppData, id: string, remindAt: string | undefined): AppData => ({
+  ...d,
+  routines: d.routines.map((r) => {
+    if (r.id !== id) return r;
+    const { remindAt: _o, ...rest } = r;
+    void _o;
+    return remindAt ? { ...rest, remindAt } : rest;
+  }),
+});
+
+/* ---------- little counters ---------- */
+
+export const addCounter = (d: AppData, label: string, icon: string, goal: number): AppData => ({
+  ...d,
+  counters: [...d.counters, { id: newId(), label, icon, goal: Math.max(1, Math.round(goal)) }],
+});
+
+export const deleteCounter = (d: AppData, id: string): AppData => ({ ...d, counters: d.counters.filter((c) => c.id !== id) });
+
+export const bumpCounter = (d: AppData, date: string, id: string, delta: number): AppData => {
+  const row = d.counterLog[date] ?? {};
+  const n = Math.max(0, (row[id] ?? 0) + delta);
+  return { ...d, counterLog: { ...d.counterLog, [date]: { ...row, [id]: n } } };
+};
+
+/* ---------- daily check-in ---------- */
+
+export const setCheckin = (d: AppData, date: string, patch: Partial<Checkin>): AppData => {
+  const next = { ...d.checkins[date], ...patch };
+  if (next.mood === undefined) delete next.mood;
+  if (!next.note) delete next.note;
+  const checkins = { ...d.checkins };
+  if (next.mood === undefined && !next.note) delete checkins[date];
+  else checkins[date] = next;
+  return { ...d, checkins };
+};

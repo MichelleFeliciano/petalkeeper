@@ -7,7 +7,7 @@ import { addDays, DAY_NAMES, fmtLong, fmtShort, fmtTime, weekDates, weekday } fr
 import { categoryOf } from '../lib/types';
 import { buildICS, downloadText } from '../lib/ics';
 import { weekSummary } from '../lib/summary';
-import { allCategories } from '../lib/types';
+import { allCategories, MOODS } from '../lib/types';
 
 function WeekReview({ dates }: { dates: string[] }) {
   const { data } = useStore();
@@ -21,6 +21,8 @@ function WeekReview({ dates }: { dates: string[] }) {
         {w.routineSteps > 0 ? ` · ${w.routineSteps} routine steps` : ''}
       </p>
       {cats.length > 0 && <p className="meta">{cats.map((c) => `${c.icon} ${c.label}: ${w.byCategory[c.id]}`).join('  ·  ')}</p>}
+      {w.routinesScheduled > 0 && <p className="meta">Routines fully finished {w.routinesComplete} of {w.routinesScheduled} times they were scheduled. Partway counts too.</p>}
+      {w.moodDays > 0 && w.commonMood && <p className="meta">Most days felt {MOODS.find((m) => m.id === w.commonMood)?.label.toLowerCase()} {MOODS.find((m) => m.id === w.commonMood)?.icon} ({w.moodDays} check-in{w.moodDays === 1 ? '' : 's'}).</p>}
       <p>{w.message}</p>
     </section>
   );

@@ -139,6 +139,7 @@ describe('new UI', () => {
   it('guided routine mode walks through steps', async () => {
     const { user } = setup();
     await user.click(screen.getByRole('button', { name: /Daily Rituals/ }));
+    await user.click(screen.getByRole('tab', { name: /Morning/ }));
     await user.click(screen.getByRole('button', { name: 'Guide me' }));
     const dlg = screen.getByRole('dialog');
     const before = within(dlg).getByText(/steps? left/).textContent;

@@ -62,8 +62,7 @@ describe('Petalkeeper app', () => {
   it('routine steps can be checked and skipped', async () => {
     const { user } = setup();
     await user.click(screen.getByRole('button', { name: /Daily Rituals/ }));
-    const evening = new Date().getHours() >= 15;
-    if (evening) await user.click(screen.getByRole('tab', { name: /Morning/ }));
+    await user.click(screen.getByRole('tab', { name: /Morning/ }));
     await user.click(screen.getByRole('checkbox', { name: /Get out of bed/ }));
     expect(screen.getByRole('checkbox', { name: /Get out of bed/ })).toBeChecked();
     await user.click(screen.getAllByRole('button', { name: 'Skip today' })[1]);

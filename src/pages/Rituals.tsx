@@ -204,7 +204,12 @@ function RoutineCard({ routine }: { routine: Routine }) {
 
 export function Rituals() {
   const { data, addRoutine } = useStore();
-  const [kind, setKind] = useState<PartOfDay>(currentPart(new Date().getHours()));
+  // open on the current part of the day, or the next one that has a routine in it
+  const [kind, setKind] = useState<PartOfDay>(() => {
+    const at = PARTS.findIndex((p) => p.id === currentPart(new Date().getHours()));
+    const order = [...PARTS.slice(at), ...PARTS.slice(0, at)];
+    return (order.find((p) => data.routines.some((r) => r.kind === p.id)) ?? order[0]).id;
+  });
   const list = data.routines.filter((r) => r.kind === kind);
   const part = partOf(kind);
   const count = (k: string) => data.routines.filter((r) => r.kind === k).length;

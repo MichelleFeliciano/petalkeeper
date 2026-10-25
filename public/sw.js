@@ -1,7 +1,7 @@
 // Minimal offline cache: network first, fall back to the cached copy.
-const CACHE = 'petalkeeper-v1';
+const CACHE = 'petalkeeper-v2';
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', './index.html', './icon.svg', './favicon.svg'])).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', './index.html', './icon.svg', './icon-180.png', './favicon.svg'])).then(() => self.skipWaiting()));
 });
 self.addEventListener('activate', (e) => {
   e.waitUntil(

@@ -8,6 +8,19 @@ import { newId } from '../lib/schedule';
 import { SyncPanel } from '../components/SyncPanel';
 import { useSync } from '../sync';
 
+async function updateApp(setNote: (t: string) => void) {
+  setNote('Checking…');
+  try {
+    const reg = await navigator.serviceWorker?.getRegistration();
+    await reg?.update();
+    await reg?.unregister();
+    for (const k of await caches.keys()) await caches.delete(k);
+  } catch {
+    /* offline or unsupported: a plain reload is still fine */
+  }
+  location.reload();
+}
+
 export function Shed() {
   const s = useStore();
   const { settings } = s.data;
@@ -17,6 +30,7 @@ export function Shed() {
   const [confirm, setConfirm] = useState<'sample' | 'all' | null>(null);
   const [cat, setCat] = useState({ label: '', icon: '🌸', color: '#E8B8C4' });
   const [permMsg, setPermMsg] = useState('');
+  const [updNote, setUpdNote] = useState('');
 
   const toggleNotifications = async (on: boolean) => {
     setPermMsg('');
@@ -174,6 +188,15 @@ export function Shed() {
         <p className="hint">{settings.lastBackup ? `Last backup: ${settings.lastBackup}.` : 'No backup made yet.'}</p>
         {msg && <p role="status" className={msg.ok ? 'ok-msg' : 'error'}>{msg.text}</p>}
         {s.saveFailed && <p className="error" role="alert">This browser couldn't save your data (private mode or full storage). Please export a backup.</p>}
+      </section>
+
+      <section className="card" aria-labelledby="up-h">
+        <h2 id="up-h">App updates</h2>
+        <p>Pull the newest version of Petalkeeper. Your activities and settings stay exactly as they are.</p>
+        <div className="actions left">
+          <button className="btn primary" onClick={() => void updateApp(setUpdNote)}>Update app</button>
+        </div>
+        {updNote && <p role="status" className="hint">{updNote}</p>}
       </section>
 
       <section className="card" aria-labelledby="rs-h">

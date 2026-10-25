@@ -256,3 +256,22 @@ label.inline select, label.inline input:not([type='checkbox']) { width: auto; }
   .side { padding-bottom: calc(0.3rem + env(safe-area-inset-bottom)); }
   .toast { bottom: calc(84px + env(safe-area-inset-bottom)); }
 }
+
+/* v1.5 */
+.offline { margin: 0 0 8px; padding: 8px 12px; border-radius: 12px; background: var(--warn-bg); color: var(--warn); font-size: 0.9rem; }
+.chips-row { display: flex; flex-wrap: wrap; gap: 4px 18px; margin: 6px 0; }
+.report-body h3 { margin: 0.8rem 0 0.2rem; font-size: 1.1rem; }
+.report-body h4 { margin: 0.8rem 0 0.2rem; font-size: 1rem; }
+.wg-scroll { overflow-x: auto; }
+.wg { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+.wg th, .wg td { padding: 4px 6px; text-align: center; border-bottom: 1px dotted var(--line); }
+.wg th[scope='row'] { text-align: left; font-weight: normal; }
+.wg th small { display: block; opacity: 0.8; }
+.wg .today { background: color-mix(in srgb, var(--petal) 25%, transparent); }
+.wg-all { color: #c4708a; }
+.wg-off { opacity: 0.4; }
+.week-glance summary { cursor: pointer; }
+@media print {
+  .no-print { display: none !important; }
+  .report { border: 0; box-shadow: none; }
+}

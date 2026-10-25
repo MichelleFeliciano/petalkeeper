@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useStore } from '../store';
 import { Modal } from '../components/Modal';
 import { exportJSON, parseImport } from '../lib/storage';
@@ -41,6 +41,32 @@ async function updateApp(setNote: (t: string) => void) {
   }
   await new Promise((r) => setTimeout(r, 1200));
   location.reload();
+}
+
+/** A number box that lets you clear it and type a new value; it only commits a valid number. */
+function NumField({ value, min, step, onCommit }: { value: number; min: number; step: number; onCommit: (n: number) => void }) {
+  const [text, setText] = useState(String(value));
+  useEffect(() => {
+    if (Number(text) !== value) setText(String(value));
+  }, [value]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <input
+      type="number"
+      inputMode="numeric"
+      min={min}
+      step={step}
+      value={text}
+      onChange={(e) => {
+        setText(e.target.value);
+        const n = Number(e.target.value);
+        if (e.target.value !== '' && Number.isFinite(n) && n >= min) onCommit(n);
+      }}
+      onBlur={() => {
+        const n = Number(text);
+        if (text === '' || !Number.isFinite(n) || n < min) setText(String(value));
+      }}
+    />
+  );
 }
 
 export function Shed() {
@@ -101,11 +127,11 @@ export function Shed() {
           </label>
           <label>
             Default task length (minutes)
-            <input type="number" min="5" step="5" value={settings.defaultDuration} onChange={(e) => s.updateSettings({ defaultDuration: Math.max(5, Number(e.target.value) || 30) })} />
+            <NumField value={settings.defaultDuration} min={5} step={5} onCommit={(n) => s.updateSettings({ defaultDuration: n })} />
           </label>
           <label>
             Breathing room between activities (minutes)
-            <input type="number" min="0" step="5" value={settings.buffer} onChange={(e) => s.updateSettings({ buffer: Math.max(0, Number(e.target.value) || 0) })} />
+            <NumField value={settings.buffer} min={0} step={5} onCommit={(n) => s.updateSettings({ buffer: n })} />
           </label>
         </div>
         <div className="row">
@@ -148,7 +174,7 @@ export function Shed() {
         {settings.notifications && (
           <label>
             Remind me this many minutes before
-            <input type="number" min="0" step="5" value={settings.notifyLead} onChange={(e) => s.updateSettings({ notifyLead: Math.max(0, Number(e.target.value) || 0) })} />
+            <NumField value={settings.notifyLead} min={0} step={5} onCommit={(n) => s.updateSettings({ notifyLead: n })} />
           </label>
         )}
         {permMsg && <p className="error" role="alert">{permMsg}</p>}

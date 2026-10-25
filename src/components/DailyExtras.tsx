@@ -4,6 +4,12 @@ import { Note } from '../pages/Rituals';
 import { RestControls } from './Controls';
 import { isGentle, isPaused, nextUp, placeOn, progressOf, routinesFor, stepsFor } from '../lib/routines';
 import { countdownText, daysUntil, lastDoneLabel } from '../lib/journal';
+import { useAutosave } from '../lib/useAutosave';
+import { clearCorruptCopy, corruptCopy, salvage } from '../lib/storage';
+import { downloadText } from '../lib/ics';
+import { addDays } from '../lib/dates';
+import { itemsOn } from '../lib/schedule';
+import { fmtTime } from '../lib/dates';
 import { PARTS, MOODS, currentPart, partOf } from '../lib/types';
 
 
@@ -11,7 +17,7 @@ const ORDER = PARTS.map((p) => p.id);
 
 /** One calm card: the next thing to do, one tap. */
 export function DoNow() {
-  const { data, today, toggleStep, toggleSkipStep } = useStore();
+  const { data, today, toggleStep, toggleSkipStep, undoable } = useStore();
   if (isPaused(data.settings, today)) return null; // the rest controls below already say so
   const next = nextUp(data, today, currentPart(new Date().getHours()), ORDER);
   if (!next) {
@@ -28,8 +34,8 @@ export function DoNow() {
       <p className="donow-step">{step.title}{step.optional ? ' (optional)' : ''}</p>
       {step.note && <p className="meta"><Note text={step.note} /></p>}
       <div className="actions left">
-        <button className="btn primary" onClick={() => toggleStep(today, routine.id, step.id)} aria-label={`Done: ${step.title}`}>Done ✓</button>
-        <button className="btn ghost" onClick={() => toggleSkipStep(today, routine.id, step.id)}>Skip today</button>
+        <button className="btn primary" onClick={() => undoable('Checked off.', () => toggleStep(today, routine.id, step.id))} aria-label={`Done: ${step.title}`}>Done ✓</button>
+        <button className="btn ghost" onClick={() => undoable('Skipped for today.', () => toggleSkipStep(today, routine.id, step.id))}>Skip today</button>
       </div>
     </section>
   );
@@ -145,6 +151,7 @@ export function CheckIn() {
   const c = data.checkins[today] ?? {};
   const [note, setNote] = useState(c.note ?? '');
   useEffect(() => setNote(c.note ?? ''), [today]); // eslint-disable-line react-hooks/exhaustive-deps
+  useAutosave(note, c.note ?? '', (v) => setCheckin(today, { note: v }));
   return (
     <section className="card" aria-labelledby="ck-h">
       <h2 id="ck-h">How is today feeling?</h2>
@@ -271,5 +278,73 @@ export function Countdowns() {
         <button className="btn small" onClick={() => setAdding(true)}>＋ Add a countdown</button>
       )}
     </section>
+  );
+}
+
+/** In the evening: what tomorrow holds, so a day-specific routine (like therapy day) isn't a surprise. */
+export function TomorrowPreview() {
+  const { data, today } = useStore();
+  if (new Date().getHours() < 16) return null;
+  const tomorrow = addDays(today, 1);
+  const routines = routinesFor(data, tomorrow).filter((r) => progressOf(data, r, tomorrow).total > 0);
+  const special = routines.filter((r) => r.days && r.days.length > 0);
+  const items = itemsOn(data.tasks, tomorrow);
+  const first = items.find((o) => o.task.start);
+  const there = placeOn(data.settings, tomorrow);
+  const move = there !== placeOn(data.settings, today) ? data.settings.places.find((p) => p.id === there) : undefined;
+  if (routines.length === 0 && items.length === 0 && !move) return null;
+  const day = new Date(tomorrow + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'long' });
+  return (
+    <section className="card" aria-labelledby="tm-h">
+      <h2 id="tm-h">Looking ahead to {day}</h2>
+      {move && <p>{move.icon} You'll be at {move.label} tomorrow.</p>}
+      {special.length > 0 && <p>✨ {special.map((r) => r.name).join(', ')} {special.length === 1 ? 'is' : 'are'} on tomorrow.</p>}
+      {routines.length > 0 && <p className="meta">Routines: {routines.map((r) => r.name).join(', ')}</p>}
+      {items.length > 0 && (
+        <p className="meta">
+          {items.length} planned thing{items.length === 1 ? '' : 's'}
+          {first?.task.start ? `, the first at ${fmtTime(first.task.start)}` : ''}.
+        </p>
+      )}
+    </section>
+  );
+}
+
+/** Shown only if saved data couldn't be read at some point and a copy was kept. */
+export function DamagedDataBanner() {
+  const { replaceAll, notify } = useStore();
+  const [copy, setCopy] = useState(corruptCopy);
+  if (!copy) return null;
+  return (
+    <div className="notice" role="alert">
+      <p>
+        <strong>Some saved data couldn't be read</strong> at one point, and a copy of it was kept safe. You can try to bring back what's readable, download the copy, or dismiss this.
+      </p>
+      <div className="actions left">
+        <button
+          className="btn primary"
+          onClick={() => {
+            const rescued = salvage(copy);
+            if (!rescued) return notify("Couldn't rescue anything from it.");
+            replaceAll(rescued);
+            clearCorruptCopy();
+            setCopy(null);
+            notify(`Brought back ${rescued.tasks.length} activities and ${rescued.routines.length} routines.`);
+          }}
+        >
+          Try to bring it back
+        </button>
+        <button className="btn" onClick={() => downloadText('petalkeeper-damaged-copy.json', copy, 'application/json')}>Download the copy</button>
+        <button
+          className="btn ghost"
+          onClick={() => {
+            clearCorruptCopy();
+            setCopy(null);
+          }}
+        >
+          Dismiss
+        </button>
+      </div>
+    </div>
   );
 }

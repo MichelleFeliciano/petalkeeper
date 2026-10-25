@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { SummaryReport } from '../components/Report';
+import { useAutosave } from '../lib/useAutosave';
 import { useStore } from '../store';
 import { MOODS } from '../lib/types';
 import { addDays, fmtLong, fromISO, toISO, weekDates } from '../lib/dates';
@@ -14,6 +16,20 @@ const shiftMonth = (iso: string, by: number) => {
   return toISO(new Date(d.getFullYear(), d.getMonth() + by, 1));
 };
 
+/** The note box for one day. Keyed by date, so switching days starts it fresh; saves as you pause typing. */
+function NoteEditor({ date }: { date: string }) {
+  const { data, setCheckin } = useStore();
+  const saved = data.checkins[date]?.note ?? '';
+  const [note, setNote] = useState(saved);
+  useAutosave(note, saved, (v) => setCheckin(date, { note: v }));
+  return (
+    <label>
+      Note for this day
+      <textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} onBlur={() => note !== saved && setCheckin(date, { note })} />
+    </label>
+  );
+}
+
 /** A calendar of how days felt, with the notes you wrote. Private; edit any day. */
 export function Journal() {
   const { data, today, setCheckin } = useStore();
@@ -21,8 +37,6 @@ export function Journal() {
   const [sel, setSel] = useState(today);
   const [q, setQ] = useState('');
   const c = data.checkins[sel] ?? {};
-  const [note, setNote] = useState(c.note ?? '');
-  useEffect(() => setNote(data.checkins[sel]?.note ?? ''), [sel]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const weeks = useMemo(() => {
     const out: string[][] = [];
@@ -54,19 +68,19 @@ export function Journal() {
 
   return (
     <div className="page">
-      <header>
+      <header className="no-print">
         <p className="eyebrow">Garden Journal · how your days have felt</p>
         <h1>Garden Journal</h1>
         <p className="hint">Private notes and moods, only for you. Nothing here is scored, and any day can be filled in later.</p>
       </header>
 
       {insight && (
-        <section className="card" aria-label="A gentle observation">
+        <section className="card no-print" aria-label="A gentle observation">
           <p>💭 {insight}</p>
         </section>
       )}
 
-      <section className="card" aria-label="Month">
+      <section className="card no-print" aria-label="Month">
         <div className="row between">
           <button className="btn small" onClick={() => setMonth(shiftMonth(month, -1))} aria-label="Previous month">‹</button>
           <h2>{title}</h2>
@@ -95,7 +109,7 @@ export function Journal() {
         </div>
       </section>
 
-      <section className="card" aria-labelledby="jd-h">
+      <section className="card no-print" aria-labelledby="jd-h">
         <h2 id="jd-h">{fmtLong(sel)}</h2>
         <div className="moods" role="group" aria-label="Mood for this day">
           {MOODS.map((m) => (
@@ -111,10 +125,7 @@ export function Journal() {
             </button>
           ))}
         </div>
-        <label>
-          Note for this day
-          <textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} onBlur={() => note !== (c.note ?? '') && setCheckin(sel, { note })} />
-        </label>
+        <NoteEditor key={sel} date={sel} />
         {(done.length > 0 || counts.length > 0) && (
           <p className="meta">
             {done.map((x) => `${x.r.name}: ${x.pr.done}/${x.pr.total}`).join(' · ')}
@@ -124,7 +135,9 @@ export function Journal() {
         )}
       </section>
 
-      <section className="card" aria-labelledby="js-h">
+      <SummaryReport />
+
+      <section className="card no-print" aria-labelledby="js-h">
         <h2 id="js-h">Search your notes</h2>
         <input type="search" aria-label="Search notes" placeholder="Search what you wrote" value={q} onChange={(e) => setQ(e.target.value)} />
         {q.trim() && found.length === 0 && <p className="empty">Nothing matches yet.</p>}

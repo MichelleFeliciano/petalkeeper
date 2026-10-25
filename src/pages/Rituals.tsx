@@ -7,6 +7,8 @@ import { addDays, fmtDuration } from '../lib/dates';
 import { atPlace, historyFor, isGentle, isPaused, placeLabel, placeOn, progressOf, recentTended, STARTERS, stepsFor } from '../lib/routines';
 import { linkify, typicalMinutes } from '../lib/journal';
 import { PlaceSwitcher, RestControls } from '../components/Controls';
+import { WeekGrid } from '../components/WeekGrid';
+import { stepLines } from '../lib/journal';
 import type { Place } from '../lib/types';
 import { PARTS, currentPart, partOf, type PartOfDay, type Routine } from '../lib/types';
 
@@ -113,9 +115,9 @@ function Guided({ routine, onClose }: { routine: Routine; onClose: () => void })
             </p>
           )}
           <div className="actions">
-            <button className="btn ghost" onClick={() => s.toggleSkipStep(today, routine.id, cur.id)}>Skip today</button>
+            <button className="btn ghost" onClick={() => s.undoable('Skipped for today.', () => s.toggleSkipStep(today, routine.id, cur.id))}>Skip today</button>
             {remaining.length > 1 && <button className="btn" onClick={() => setOffset(offset + 1)}>Not yet</button>}
-            <button className="btn primary" onClick={() => s.toggleStep(today, routine.id, cur.id)}>Done ✓</button>
+            <button className="btn primary" onClick={() => s.undoable('Checked off.', () => s.toggleStep(today, routine.id, cur.id))}>Done ✓</button>
           </div>
         </>
       )}
@@ -310,7 +312,19 @@ function RoutineCard({ routine, first, last }: { routine: Routine; first: boolea
       {editing && (
         <>
           <div className="row">
-            <input aria-label="New step name" placeholder="New step" value={newStep} onChange={(e) => setNewStep(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && add()} />
+            <input
+              aria-label="New step name"
+              placeholder="New step (or paste a list)"
+              value={newStep}
+              onChange={(e) => setNewStep(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && add()}
+              onPaste={(e) => {
+                const lines = stepLines(e.clipboardData.getData('text'));
+                if (lines.length < 2) return;
+                e.preventDefault();
+                s.setSteps(routine.id, [...routine.steps, ...lines.map((title) => ({ id: newId(), title }))]);
+              }}
+            />
             <input aria-label="Minutes (optional)" type="number" min="1" placeholder="min" value={mins} onChange={(e) => setMins(e.target.value)} style={{ maxWidth: 90 }} />
             <button className="btn" onClick={add}>Add step</button>
           </div>
@@ -389,6 +403,7 @@ export function Rituals() {
           ))}
         </div>
       </header>
+      <WeekGrid />
       <PlaceSwitcher />
       <RestControls />
       {paused && <p className="hint">Routines are paused, so they're hidden on Today. You can still edit them here.</p>}

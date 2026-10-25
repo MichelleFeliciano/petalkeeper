@@ -28,6 +28,8 @@ export interface Store extends Wrapped {
   notify: (text: string) => void;
   undo: () => void;
   dismissToast: () => void;
+  /** run an action and offer to undo it for a few seconds */
+  undoable: (label: string, run: () => void) => void;
 }
 
 /** operations that can be undone for a few seconds, with the message to show */
@@ -52,6 +54,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<Toast | null>(null);
   const snap = useRef<AppData | null>(null);
   const snapAt = useRef(0);
+  const labelOverride = useRef<string | null>(null);
 
   useEffect(() => {
     setSaveFailed(!saveData(data));
@@ -102,7 +105,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     for (const [name, fn] of Object.entries(ops)) {
       if (name === 'routineDay') continue;
       w[name] = (...args: unknown[]) =>
-        apply((d) => (fn as (d: AppData, ...a: unknown[]) => AppData)(d, ...args), UNDOABLE[name]);
+        apply((d) => (fn as (d: AppData, ...a: unknown[]) => AppData)(d, ...args), labelOverride.current ?? UNDOABLE[name]);
     }
     return {
       ...(w as unknown as Wrapped),
@@ -129,6 +132,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         setToast(null);
       },
       dismissToast: () => setToast(null),
+      undoable: (label: string, run: () => void) => {
+        labelOverride.current = label;
+        try {
+          run();
+        } finally {
+          labelOverride.current = null;
+        }
+      },
     };
   }, [data, today, saveFailed, toast, apply]);
 

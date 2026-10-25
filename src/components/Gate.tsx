@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Modal } from './Modal';
 import { checkPin, hasPin, markTourSeen, tourSeen } from '../lib/device';
+import { isFreshSample } from '../lib/storage';
+import { useStore } from '../store';
+import { loadSyncConfig } from '../lib/sync';
 
 const RELOCK_AFTER_MS = 2 * 60 * 1000;
 
@@ -54,7 +57,10 @@ export function LockGate({ children }: { children: ReactNode }) {
 
 /** A short welcome the first time the app opens on a device. */
 export function Tour() {
+  const { resetEverything } = useStore();
   const [open, setOpen] = useState(() => !tourSeen());
+  // only offer this when the app is showing its built-in examples (not data that arrived from another device)
+  const examples = isFreshSample() && !loadSyncConfig();
   if (!open) return null;
   const close = () => {
     markTourSeen();
@@ -69,7 +75,21 @@ export function Tour() {
         <li>🧺 <strong>Garden Shed</strong> is where backups, syncing between your devices, text size and a private PIN live.</li>
         <li>Everything stays on your devices. Nothing here is ever scored or counted against you.</li>
       </ul>
-      <div className="actions"><button className="btn primary" onClick={close}>Got it</button></div>
+      {examples && <p className="hint">The tasks and routines you see are just examples to look around with.</p>}
+      <div className="actions">
+        {examples && (
+          <button
+            className="btn"
+            onClick={() => {
+              resetEverything();
+              close();
+            }}
+          >
+            Start with an empty garden
+          </button>
+        )}
+        <button className="btn primary" data-autofocus onClick={close}>{examples ? 'Keep the examples for now' : 'Got it'}</button>
+      </div>
     </Modal>
   );
 }

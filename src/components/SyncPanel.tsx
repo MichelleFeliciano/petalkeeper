@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useSync } from '../sync';
 import { Modal } from './Modal';
-import type { Version } from '../lib/sync';
+import { daysLeft, type Version } from '../lib/sync';
+import { useStore } from '../store';
 import type { AppData } from '../lib/types';
 
 const when = (iso: string) => (iso ? new Date(iso).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'unknown time');
@@ -93,11 +94,58 @@ function PrivacyAndHistory({ run, busy, err }: { run: (fn: () => Promise<unknown
 
 const errText = (e: unknown) => (e instanceof Error ? e.message : 'Something went wrong.');
 
+/** When the access token runs out, and a way to swap in a new one without disconnecting. */
+function TokenInfo({ run, busy, err }: { run: (fn: () => Promise<unknown>) => Promise<void>; busy: boolean; err: string }) {
+  const sync = useSync();
+  const { today } = useStore();
+  const [token, setToken] = useState('');
+  const [exp, setExp] = useState('');
+  const left = daysLeft(sync.config?.tokenExpires, today);
+  return (
+    <details className="sync-more" open={left !== null && left <= 14}>
+      <summary>Access token{left !== null ? (left <= 0 ? ' (expired)' : ` (expires in ${left} day${left === 1 ? '' : 's'})`) : ''}</summary>
+      {left !== null && left <= 14 && (
+        <p className="error" role="alert">
+          {left <= 0 ? 'Your token has expired, so syncing has stopped.' : `Your token expires in ${left} day${left === 1 ? '' : 's'}.`} Make a new one on GitHub (Settings → Developer settings → Fine-grained tokens), then paste it below.
+        </p>
+      )}
+      <label>
+        Token expires on (optional, so I can warn you)
+        <input type="date" value={sync.config?.tokenExpires ?? ''} onChange={(e) => sync.setTokenExpires(e.target.value || undefined)} />
+      </label>
+      <label>
+        New token
+        <input type="password" autoComplete="off" value={token} onChange={(e) => setToken(e.target.value)} />
+      </label>
+      <label>
+        New token expires on (optional)
+        <input type="date" value={exp} onChange={(e) => setExp(e.target.value)} />
+      </label>
+      <button
+        className="btn"
+        disabled={busy || !token.trim()}
+        onClick={() =>
+          void run(async () => {
+            await sync.replaceToken(token, exp || undefined);
+            setToken('');
+            setExp('');
+            await sync.syncNow();
+          })
+        }
+      >
+        Replace token
+      </button>
+      {err && <p className="error" role="alert">{err}</p>}
+    </details>
+  );
+}
+
 export function SyncPanel() {
   const sync = useSync();
   const [repo, setRepo] = useState('');
   const [token, setToken] = useState('');
   const [passphrase, setPassphrase] = useState('');
+  const [expires, setExpires] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
@@ -139,6 +187,7 @@ export function SyncPanel() {
               Disconnect this device
             </button>
           </div>
+          <TokenInfo run={run} busy={busy} err={err} />
           <PrivacyAndHistory run={run} busy={busy} err={err} />
           <p className="hint">
             Disconnecting keeps everything on this device and forgets the access token. Edits from different devices are combined; if the same item was changed on two devices at once, this device's version is kept.
@@ -163,7 +212,7 @@ export function SyncPanel() {
             onSubmit={(e) => {
               e.preventDefault();
               void run(async () => {
-                const r = await sync.connect(repo, token, passphrase);
+                const r = await sync.connect(repo, token, passphrase, expires || undefined);
                 if (r === 'connected') {
                   setToken('');
                   setPassphrase('');
@@ -178,6 +227,10 @@ export function SyncPanel() {
             <label>
               Access token
               <input type="password" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" />
+            </label>
+            <label>
+              Token expires on (optional, so I can warn you before it stops working)
+              <input type="date" value={expires} onChange={(e) => setExpires(e.target.value)} />
             </label>
             <label>
               Passphrase (only if your cloud copy is encrypted)

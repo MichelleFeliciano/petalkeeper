@@ -7,6 +7,7 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
     const prev = document.activeElement as HTMLElement | null;
     const root = ref.current;
     const first =
+      root?.querySelector<HTMLElement>('[data-autofocus]') ??
       root?.querySelector<HTMLElement>('input:not([type=hidden]):not(:disabled), select:not(:disabled), textarea:not(:disabled)') ??
       root?.querySelector<HTMLElement>('.actions .btn') ??
       root?.querySelector<HTMLElement>('button');

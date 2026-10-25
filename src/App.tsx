@@ -4,6 +4,7 @@ import { itemsOn, isDone } from './lib/schedule';
 import { fmtTime, nowMinutes, toMinutes } from './lib/dates';
 import { UIProvider } from './ui';
 import { SyncProvider, useSync } from './sync';
+import { daysLeft } from './lib/sync';
 import { LockGate, Tour } from './components/Gate';
 import { applyTextSize, autoBackupDue, getTextSize, markAutoBackup } from './lib/device';
 import { exportJSON } from './lib/storage';
@@ -69,18 +70,21 @@ function ToastBar() {
 /** A small "is my other device up to date?" line under the menu. Tap it to open the sync settings. */
 function SyncChip({ onOpen }: { onOpen: () => void }) {
   const sync = useSync();
+  const { today } = useStore();
   const [, tick] = useState(0);
   useEffect(() => {
     const t = setInterval(() => tick((n) => n + 1), 30_000);
     return () => clearInterval(t);
   }, []);
   if (!sync.config) return null;
+  const left = daysLeft(sync.config.tokenExpires, today);
+  const expiring = left !== null && left <= 14;
   const mins = sync.lastSync ? Math.floor((Date.now() - new Date(sync.lastSync).getTime()) / 60000) : null;
   const text =
-    sync.status === 'syncing' ? 'Syncing…' : sync.status === 'error' ? 'Sync problem. Tap to see' : mins === null ? 'Sync is on' : mins < 1 ? 'Synced just now' : `Synced ${mins} min ago`;
+    sync.status === 'syncing' ? 'Syncing…' : sync.status === 'error' ? 'Sync problem. Tap to see' : expiring ? (left! <= 0 ? 'Token expired. Tap to renew' : `Token expires in ${left} day${left === 1 ? '' : 's'}`) : mins === null ? 'Sync is on' : mins < 1 ? 'Synced just now' : `Synced ${mins} min ago`;
   return (
-    <button className={'sync-chip' + (sync.status === 'error' ? ' bad' : '')} onClick={onOpen} aria-label={`Sync status: ${text}. Open sync settings`}>
-      <span aria-hidden="true">{sync.status === 'error' ? '⚠️' : '☁️'}</span> {text}
+    <button className={'sync-chip' + (sync.status === 'error' || expiring ? ' bad' : '')} onClick={onOpen} aria-label={`Sync status: ${text}. Open sync settings`}>
+      <span aria-hidden="true">{sync.status === 'error' || expiring ? '⚠️' : '☁️'}</span> {text}
     </button>
   );
 }
@@ -101,6 +105,27 @@ function useShareTarget(go: (id: PageId) => void) {
     window.history.replaceState(null, '', window.location.pathname + '#/seeds');
     go('seeds');
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
+/** A quiet note when there's no connection. Nothing breaks; it just explains why syncing waits. */
+function OfflineNote() {
+  const [online, setOnline] = useState(() => navigator.onLine !== false);
+  useEffect(() => {
+    const up = () => setOnline(true);
+    const down = () => setOnline(false);
+    window.addEventListener('online', up);
+    window.addEventListener('offline', down);
+    return () => {
+      window.removeEventListener('online', up);
+      window.removeEventListener('offline', down);
+    };
+  }, []);
+  if (online) return null;
+  return (
+    <p className="offline" role="status">
+      📴 You're offline. Everything still works here, and syncing will pick up again when you're back.
+    </p>
+  );
 }
 
 /** If you've turned it on, saves a backup file to your downloads about once a week (desktop browsers). */
@@ -165,6 +190,7 @@ function Shell() {
         <SyncChip onOpen={() => go('shed')} />
       </aside>
       <main id="main" tabIndex={-1}>
+        <OfflineNote />
         {page === 'today' && <Today />}
         {page === 'rituals' && <Rituals />}
         {page === 'path' && <Path />}

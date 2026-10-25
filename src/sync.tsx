@@ -35,7 +35,10 @@ export interface SyncApi {
   lastSync: string | null;
   /** set when the cloud already holds data and the user must choose what to do */
   pending: { cloudTasks: number; deviceTasks: number } | null;
-  connect: (repo: string, token: string, passphrase?: string) => Promise<'connected' | 'choose'>;
+  connect: (repo: string, token: string, passphrase?: string, expires?: string) => Promise<'connected' | 'choose'>;
+  /** swap in a new access token without disconnecting */
+  replaceToken: (token: string, expires?: string) => Promise<void>;
+  setTokenExpires: (expires: string | undefined) => void;
   versions: () => Promise<Version[]>;
   /** preview what an earlier version holds */
   peekVersion: (sha: string) => Promise<AppData>;
@@ -135,8 +138,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     error,
     lastSync,
     pending: pending ? { cloudTasks: pending.remote.tasks.length, deviceTasks: dataRef.current.tasks.length } : null,
-    connect: async (repo, token, passphrase) => {
-      const cfg: SyncConfig = { repo: repo.trim(), token: token.trim(), path: 'petalkeeper.json', auto: true, ...(passphrase?.trim() ? { passphrase: passphrase.trim() } : {}) };
+    connect: async (repo, token, passphrase, expires) => {
+      const cfg: SyncConfig = { repo: repo.trim(), token: token.trim(), path: 'petalkeeper.json', auto: true, ...(passphrase?.trim() ? { passphrase: passphrase.trim() } : {}), ...(expires ? { tokenExpires: expires } : {}) };
       await testConnection(cfg);
       const remote = await getRemote(cfg);
       if (!remote.data) {
@@ -165,6 +168,25 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       }
     },
     cancelConnect: () => setPending(null),
+    replaceToken: async (token, expires) => {
+      if (!config) return;
+      const { tokenExpires: _t, ...rest } = config;
+      void _t;
+      const next: SyncConfig = { ...rest, token: token.trim(), ...(expires ? { tokenExpires: expires } : {}) };
+      await testConnection(next);
+      saveSyncConfig(next);
+      setConfig(next);
+      setStatus('idle');
+      setError('');
+    },
+    setTokenExpires: (expires) => {
+      if (!config) return;
+      const { tokenExpires: _t, ...rest } = config;
+      void _t;
+      const next: SyncConfig = expires ? { ...rest, tokenExpires: expires } : rest;
+      saveSyncConfig(next);
+      setConfig(next);
+    },
     versions: async () => {
       if (!config) return [];
       return listVersions(config);

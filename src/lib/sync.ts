@@ -16,6 +16,8 @@ export interface SyncConfig {
   auto: boolean;
   /** if set, the cloud copy is encrypted with this passphrase (kept only in this browser) */
   passphrase?: string;
+  /** the day the access token expires (you tell the app; GitHub doesn't share it), for a heads-up beforehand */
+  tokenExpires?: string;
 }
 
 export type SyncErrorKind = 'auth' | 'notfound' | 'conflict' | 'network' | 'invalid' | 'locked' | 'other';
@@ -279,7 +281,7 @@ async function call(f: Fetch, c: SyncConfig, u: string, init: RequestInit = {}):
 }
 
 function failFrom(res: Response): SyncError {
-  if (res.status === 401) return new SyncError('auth', 'GitHub did not accept that token. It may have expired or been mistyped.');
+  if (res.status === 401) return new SyncError('auth', 'GitHub no longer accepts this token. It has probably expired or been removed. Make a new one at github.com/settings/personal-access-tokens, then use "Replace token" here. Your data on this device is safe.');
   if (res.status === 403) return new SyncError('auth', 'GitHub refused access. Check the token has Contents read and write for the data repository.');
   if (res.status === 404) return new SyncError('notfound', "Couldn't find that repository. Check its name and that the token can access it.");
   if (res.status === 409 || res.status === 422) return new SyncError('conflict', 'The cloud copy changed while syncing.');
@@ -387,4 +389,12 @@ export async function getVersion(c: SyncConfig, sha: string, f: Fetch = fetch): 
   const r = await getRemote(c, f, sha);
   if (!r.data) throw new SyncError('notfound', 'That version could not be found.');
   return r.data;
+}
+
+/** whole days until a date (negative once it has passed) */
+export function daysLeft(expires: string | undefined, today: string): number | null {
+  if (!expires || !/^\d{4}-\d{2}-\d{2}$/.test(expires)) return null;
+  const [y1, m1, d1] = expires.split('-').map(Number);
+  const [y2, m2, d2] = today.split('-').map(Number);
+  return Math.round((Date.UTC(y1, m1 - 1, d1) - Date.UTC(y2, m2 - 1, d2)) / 86_400_000);
 }

@@ -91,3 +91,11 @@ export function linkify(text: string): Piece[] {
   if (last < text.length) out.push({ text: text.slice(last) });
   return out;
 }
+
+/** one step per line; bullets and numbers at the start of a line are dropped */
+export function stepLines(text: string): string[] {
+  return text
+    .split(/\r?\n/)
+    .map((l) => l.replace(/^\s*(?:[-*•–]|\d+[.)])\s*/, '').trim())
+    .filter(Boolean);
+}

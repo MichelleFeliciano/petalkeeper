@@ -31,6 +31,20 @@ function validTask(t: unknown): t is Task {
   return true;
 }
 
+const dayList = (x: unknown) => Array.isArray(x) && x.every((d) => Number.isInteger(d) && d >= 0 && d <= 6);
+function validRoutine(r: unknown): boolean {
+  if (!isObj(r) || !isStr(r.id) || !isStr(r.name) || !PARTS.some((p) => p.id === r.kind)) return false;
+  if (r.days !== undefined && !dayList(r.days)) return false;
+  if (r.remindAt !== undefined && !isTime(r.remindAt)) return false;
+  if (r.places !== undefined && !(Array.isArray(r.places) && r.places.every(isStr))) return false;
+  if (!Array.isArray(r.steps)) return false;
+  return r.steps.every(
+    (st) =>
+      isObj(st) && isStr(st.id) && isStr(st.title) && (st.days === undefined || dayList(st.days)) && (st.note === undefined || isStr(st.note)) &&
+      (st.places === undefined || (Array.isArray(st.places) && st.places.every(isStr))),
+  );
+}
+
 export type ValidateResult = { ok: true; data: AppData } | { ok: false; error: string };
 
 /** Returns a cleaned AppData or an error message. Never throws. */
@@ -39,18 +53,7 @@ export function validateData(raw: unknown): ValidateResult {
   if (raw.version !== 1) return { ok: false, error: 'Unsupported backup version.' };
   if (!Array.isArray(raw.tasks) || !raw.tasks.every(validTask)) return { ok: false, error: 'Some tasks in the file are malformed.' };
   if (!Array.isArray(raw.routines)) return { ok: false, error: 'Routines are missing or malformed.' };
-  for (const r of raw.routines) {
-    if (
-      !isObj(r) || !isStr(r.id) || !isStr(r.name) || !PARTS.some((p) => p.id === r.kind) ||
-      (r.days !== undefined && !(Array.isArray(r.days) && r.days.every((x) => Number.isInteger(x) && x >= 0 && x <= 6))) ||
-      (r.remindAt !== undefined && !isTime(r.remindAt)) ||
-      (r.places !== undefined && !(Array.isArray(r.places) && r.places.every(isStr))) ||
-      !Array.isArray(r.steps) ||
-      !r.steps.every((s) => isObj(s) && isStr(s.id) && isStr(s.title) && (s.days === undefined || (Array.isArray(s.days) && s.days.every((x) => Number.isInteger(x) && x >= 0 && x <= 6))) && (s.note === undefined || isStr(s.note)) && (s.places === undefined || (Array.isArray(s.places) && s.places.every(isStr))))
-    ) {
-      return { ok: false, error: 'Some routines in the file are malformed.' };
-    }
-  }
+  if (!raw.routines.every(validRoutine)) return { ok: false, error: 'Some routines in the file are malformed.' };
   if (!isObj(raw.routineLog)) return { ok: false, error: 'Routine history is malformed.' };
   if (!isObj(raw.settings)) return { ok: false, error: 'Settings are malformed.' };
   const routineLog: AppData['routineLog'] = {};
@@ -179,6 +182,56 @@ export function validateData(raw: unknown): ValidateResult {
   };
 }
 
+/** true when this open started from the built-in examples because nothing had been saved yet */
+let freshSample = false;
+export const isFreshSample = () => freshSample;
+
+/** Keep what can be read from damaged saved data: drop the broken pieces instead of everything. */
+export function salvage(text: string): AppData | null {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (!isObj(raw)) return null;
+  const list = (k: string) => (Array.isArray(raw[k]) ? (raw[k] as unknown[]) : []);
+  const cand: Obj = {
+    ...raw,
+    version: 1,
+    tasks: list('tasks').filter(validTask),
+    routines: list('routines').filter(validRoutine),
+    routineLog: isObj(raw.routineLog) ? raw.routineLog : {},
+    settings: isObj(raw.settings) ? raw.settings : {},
+  };
+  const first = validateData(cand);
+  if (first.ok) return first.data;
+  // optional parts that can't be read are simply left out
+  const optional = ['templates', 'counters', 'needed', 'countdowns'];
+  const without = (keys: string[]) => Object.fromEntries(Object.entries(cand).filter(([k]) => !keys.includes(k)));
+  for (const keys of [...optional.map((k) => [k]), optional]) {
+    const r = validateData(without(keys));
+    if (r.ok) return r.data;
+  }
+  return null;
+}
+
+const CORRUPT_KEY = STORAGE_KEY + '.corrupt';
+export const corruptCopy = (): string | null => {
+  try {
+    return localStorage.getItem(CORRUPT_KEY);
+  } catch {
+    return null;
+  }
+};
+export const clearCorruptCopy = () => {
+  try {
+    localStorage.removeItem(CORRUPT_KEY);
+  } catch {
+    /* ignore */
+  }
+};
+
 export function loadData(): AppData {
   let text: string | null = null;
   try {
@@ -186,7 +239,10 @@ export function loadData(): AppData {
   } catch {
     return sampleData();
   }
-  if (text === null) return sampleData();
+  if (text === null) {
+    freshSample = true;
+    return sampleData();
+  }
   try {
     const res = validateData(JSON.parse(text));
     if (res.ok) return res.data;

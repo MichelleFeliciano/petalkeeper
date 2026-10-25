@@ -124,3 +124,11 @@ The app must be hosted at a web address so your phone can open it. Hosting is fr
 - **As needed** items ("last done 8:10 am"), **countdowns**, **planned rests**, optional routine **timing**, step **notes and links**.
 - **Garden Journal:** month calendar of moods and notes, search, and a soft weekday observation once there's enough history.
 - **Share to Petalkeeper** (Android, installed app) adds shared text to the Seed Pouch; optional **weekly backup download**.
+
+## v1.5
+
+- First open can start with an **empty garden** instead of the examples.
+- **Token expiry** heads-up and a **Replace token** button for sync; a clearer message when GitHub stops accepting the token.
+- **Damaged-data recovery** banner, number boxes you can clear while typing, and notes that **autosave** as you pause.
+- Automated **accessibility checks** (axe) in the test suite.
+- Home-screen **shortcuts**, an **offline** note, **paste a list** to add routine steps, a **tomorrow preview** in the evening, **undo** for the "do this now" buttons, a **shareable summary** (print, PDF or copy as text), and a **week-at-a-glance** routine grid.

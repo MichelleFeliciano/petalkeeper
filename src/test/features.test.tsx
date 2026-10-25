@@ -201,7 +201,7 @@ describe('new screens', () => {
     const user = userEvent.setup();
     const { unmount } = render(<App />);
     expect(screen.getByRole('dialog', { name: /Welcome/ })).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Got it' }));
+    await user.click(screen.getByRole('button', { name: /Keep the examples|Got it/ }));
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     unmount();
     setPin('2468');

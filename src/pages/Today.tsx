@@ -6,7 +6,7 @@ import { AdjustDay } from '../components/AdjustDay';
 import { TimeBlocks } from '../components/TimeBlocks';
 import { TemplatesModal } from '../components/TemplatesModal';
 import { Fairy, GardenStrip, type Pose } from '../components/Fairy';
-import { AsNeeded, Countdowns, DoNow, TodaysRoutines, Counters, CheckIn } from '../components/DailyExtras';
+import { AsNeeded, Countdowns, DamagedDataBanner, DoNow, TodaysRoutines, TomorrowPreview, Counters, CheckIn } from '../components/DailyExtras';
 import { PlaceSwitcher } from '../components/Controls';
 import { findConflicts, isDone, itemsOn } from '../lib/schedule';
 import { addDays, fmtDuration, fmtLong, fmtTime, fromISO, nowMinutes, toMinutes } from '../lib/dates';
@@ -77,8 +77,8 @@ export function Today() {
           <p className="eyebrow">Today's Garden · your daily plan</p>
           <h1>{fmtLong(today)}</h1>
           <p className="greet">{greet}.{settings.showFairy ? ` ${msg}` : ''}</p>
-          <div className="progress" aria-label={`${done} of ${total} done today`}>
-            <div className="bar" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done}>
+          <div className="progress">
+            <div className="bar" role="progressbar" aria-label={`${done} of ${total} done today`} aria-valuemin={0} aria-valuemax={total} aria-valuenow={done}>
               <span style={{ width: total ? `${(done / total) * 100}%` : '0%' }} />
             </div>
             <span>{total === 0 ? 'A quiet day ahead' : `${done} of ${total} tended`}</span>
@@ -106,6 +106,8 @@ export function Today() {
         {settings.showFairy && <Fairy pose={pose} />}
       </header>
 
+      <DamagedDataBanner />
+
       <PlaceSwitcher />
 
       <Countdowns />
@@ -113,6 +115,8 @@ export function Today() {
       <DoNow />
 
       <TodaysRoutines />
+
+      <TomorrowPreview />
 
       <AsNeeded />
 

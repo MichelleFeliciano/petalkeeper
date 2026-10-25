@@ -1,6 +1,6 @@
 import { isISODate, isTime } from './dates';
 import { sampleData } from './seed';
-import { DEFAULT_SETTINGS, type AppData, type CategoryDef, type Settings, type Task, type Template } from './types';
+import { DEFAULT_SETTINGS, PARTS, type AppData, type CategoryDef, type Settings, type Task, type Template } from './types';
 
 export const STORAGE_KEY = 'petalkeeper.v1';
 
@@ -41,7 +41,7 @@ export function validateData(raw: unknown): ValidateResult {
   if (!Array.isArray(raw.routines)) return { ok: false, error: 'Routines are missing or malformed.' };
   for (const r of raw.routines) {
     if (
-      !isObj(r) || !isStr(r.id) || !isStr(r.name) || !['morning', 'evening'].includes(r.kind as string) ||
+      !isObj(r) || !isStr(r.id) || !isStr(r.name) || !PARTS.some((p) => p.id === r.kind) ||
       !Array.isArray(r.steps) || !r.steps.every((s) => isObj(s) && isStr(s.id) && isStr(s.title))
     ) {
       return { ok: false, error: 'Some routines in the file are malformed.' };

@@ -75,9 +75,23 @@ export interface Task {
   createdAt: string;
 }
 
+/** Routines belong to a part of the day, not a clock time: "first thing", "winding down"… */
+export const PARTS = [
+  { id: 'morning', label: 'Morning', icon: '🌅', hint: 'First thing, when you wake up' },
+  { id: 'midday', label: 'Midday', icon: '☀️', hint: 'Around lunch' },
+  { id: 'afternoon', label: 'Afternoon', icon: '🌤️', hint: 'The middle stretch of the day' },
+  { id: 'evening', label: 'Evening', icon: '🌙', hint: 'Winding down after the day' },
+  { id: 'bedtime', label: 'Bedtime', icon: '🛏️', hint: 'Last thing before sleep' },
+] as const;
+export type PartOfDay = (typeof PARTS)[number]['id'];
+export const partOf = (id: string) => PARTS.find((p) => p.id === id) ?? PARTS[0];
+/** which part of the day it is right now */
+export const currentPart = (hour: number): PartOfDay =>
+  hour < 11 ? 'morning' : hour < 14 ? 'midday' : hour < 18 ? 'afternoon' : hour < 21 ? 'evening' : 'bedtime';
+
 export interface Routine {
   id: string;
-  kind: 'morning' | 'evening';
+  kind: PartOfDay;
   name: string;
   steps: RoutineStep[];
 }

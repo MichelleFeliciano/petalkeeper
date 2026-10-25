@@ -126,6 +126,11 @@ export const addRoutine = (d: AppData, kind: Routine['kind'], name: string): App
   routines: [...d.routines, { id: newId(), kind, name, steps: [] }],
 });
 
+export const setRoutineKind = (d: AppData, id: string, kind: Routine['kind']): AppData => ({
+  ...d,
+  routines: d.routines.map((r) => (r.id === id ? { ...r, kind } : r)),
+});
+
 export const renameRoutine = (d: AppData, id: string, name: string): AppData => ({
   ...d,
   routines: d.routines.map((r) => (r.id === id ? { ...r, name } : r)),

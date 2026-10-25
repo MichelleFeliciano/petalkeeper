@@ -4,7 +4,7 @@ import { Modal } from '../components/Modal';
 import { routineDay } from '../lib/ops';
 import { newId } from '../lib/schedule';
 import { fmtDuration } from '../lib/dates';
-import type { Routine } from '../lib/types';
+import { PARTS, currentPart, partOf, type PartOfDay, type Routine } from '../lib/types';
 
 function Bed({ done, total }: { done: number; total: number }) {
   // little flowers that appear as steps are finished
@@ -177,6 +177,14 @@ function RoutineCard({ routine }: { routine: Routine }) {
             <input aria-label="Minutes (optional)" type="number" min="1" placeholder="min" value={mins} onChange={(e) => setMins(e.target.value)} style={{ maxWidth: 90 }} />
             <button className="btn" onClick={add}>Add step</button>
           </div>
+          <label className="inline">
+            Part of the day{' '}
+            <select value={routine.kind} onChange={(e) => s.setRoutineKind(routine.id, e.target.value as PartOfDay)}>
+              {PARTS.map((p) => (
+                <option key={p.id} value={p.id}>{p.icon} {p.label} · {p.hint}</option>
+              ))}
+            </select>
+          </label>
           <button className="btn danger small" onClick={() => setConfirmDel(true)}>Delete this routine</button>
         </>
       )}
@@ -196,27 +204,32 @@ function RoutineCard({ routine }: { routine: Routine }) {
 
 export function Rituals() {
   const { data, addRoutine } = useStore();
-  const [kind, setKind] = useState<'morning' | 'evening'>(new Date().getHours() >= 15 ? 'evening' : 'morning');
+  const [kind, setKind] = useState<PartOfDay>(currentPart(new Date().getHours()));
   const list = data.routines.filter((r) => r.kind === kind);
+  const part = partOf(kind);
+  const count = (k: string) => data.routines.filter((r) => r.kind === k).length;
 
   return (
     <div className="page">
       <header>
-        <p className="eyebrow">Daily Rituals · morning &amp; evening routines</p>
-        <h1>{kind === 'morning' ? 'Morning flowerbed' : 'Evening flowerbed'}</h1>
-        <p className="hint">Checklists reset each day. Skip anything you like; nothing is lost. Medication items are just your own reminders, not medical advice.</p>
-        <div className="tabs" role="tablist" aria-label="Routine type">
-          {(['morning', 'evening'] as const).map((k) => (
-            <button key={k} role="tab" aria-selected={kind === k} className={'tab' + (kind === k ? ' on' : '')} onClick={() => setKind(k)}>
-              {k === 'morning' ? '🌅 Morning' : '🌙 Evening'}
+        <p className="eyebrow">Daily Rituals · routines for each part of your day</p>
+        <h1>{part.label} flowerbed</h1>
+        <p className="hint">
+          {part.hint}. Routines follow the part of the day, not the clock, so there's no set time. Checklists reset each day. Skip anything you like; nothing is lost. Medication items are just your own reminders, not medical advice.
+        </p>
+        <div className="tabs" role="tablist" aria-label="Part of the day">
+          {PARTS.map((p) => (
+            <button key={p.id} role="tab" aria-selected={kind === p.id} className={'tab' + (kind === p.id ? ' on' : '')} onClick={() => setKind(p.id)}>
+              {p.icon} {p.label}
+              {count(p.id) > 0 ? ` (${count(p.id)})` : ''}
             </button>
           ))}
         </div>
       </header>
       {list.map((r) => <RoutineCard key={r.id} routine={r} />)}
-      {list.length === 0 && <p className="empty">No {kind} routine yet. Plant one whenever you like.</p>}
-      <button className="btn primary" onClick={() => addRoutine(kind, kind === 'morning' ? 'New morning routine' : 'New evening routine')}>
-        ＋ New {kind} routine
+      {list.length === 0 && <p className="empty">No {part.label.toLowerCase()} routine yet. Plant one whenever you like, for example "{kind === 'morning' ? 'Wake-up: shower, brush teeth' : part.label + ' reset'}".</p>}
+      <button className="btn primary" onClick={() => addRoutine(kind, `New ${part.label.toLowerCase()} routine`)}>
+        ＋ New {part.label.toLowerCase()} routine
       </button>
     </div>
   );

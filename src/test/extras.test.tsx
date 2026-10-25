@@ -146,3 +146,28 @@ describe('new UI', () => {
     expect(within(dlg).getByText(/steps? left/).textContent).not.toBe(before);
   });
 });
+
+describe('routines for parts of the day', () => {
+  it('moves a routine to another part of the day and still round-trips', () => {
+    let d = ops.addRoutine(emptyForTest(), 'morning', 'Wake-up');
+    d = ops.setRoutineKind(d, d.routines[0].id, 'bedtime');
+    expect(d.routines[0].kind).toBe('bedtime');
+    const res = parseImport(exportJSON(d));
+    expect(res.ok).toBe(true);
+    expect(parseImport(JSON.stringify({ ...d, routines: [{ ...d.routines[0], kind: 'brunch' }] })).ok).toBe(false);
+  });
+
+  it('lets you plant a routine in any part of the day and shows it on Today', async () => {
+    window.location.hash = '';
+    const user = userEvent.setup();
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: /Daily Rituals/ }));
+    await user.click(screen.getByRole('tab', { name: /Midday/ }));
+    await user.click(screen.getByRole('button', { name: /New midday routine/ }));
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    await user.type(screen.getByLabelText('New step name'), 'Eat lunch away from my desk');
+    await user.click(screen.getByRole('button', { name: 'Add step' }));
+    await user.click(screen.getByRole('button', { name: /Today's Garden/ }));
+    expect(screen.getByText('New midday routine')).toBeInTheDocument();
+  });
+});

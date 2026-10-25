@@ -8,6 +8,7 @@ import { newId } from '../lib/schedule';
 import { SyncPanel } from '../components/SyncPanel';
 import { DevicePanel } from '../components/DevicePanel';
 import { PlacesPanel } from '../components/PlacesPanel';
+import { SecondMemoryTodos } from '../components/SecondMemoryTodos';
 import { buildRoutineICS } from '../lib/routines';
 import { useSync } from '../sync';
 
@@ -204,9 +205,17 @@ export function Shed() {
             <NumField value={settings.notifyLead} min={0} step={5} onCommit={(n) => s.updateSettings({ notifyLead: n })} />
           </label>
         )}
+        {settings.notifications && (
+          <label>
+            Daily nudge about to-dos that are due today or late (empty = off)
+            <input type="time" value={settings.todoRemindAt ?? ''} onChange={(e) => s.updateSettings({ todoRemindAt: e.target.value || undefined })} />
+          </label>
+        )}
         {permMsg && <p className="error" role="alert">{permMsg}</p>}
         <p className="hint">Reminders only appear while Petalkeeper is open in a browser tab. If it's closed, nothing can be delivered. Everything works fine with reminders off.</p>
       </section>
+
+      <SecondMemoryTodos />
 
       <section className="card form" aria-labelledby="cc-h">
         <h2 id="cc-h">Your own categories</h2>

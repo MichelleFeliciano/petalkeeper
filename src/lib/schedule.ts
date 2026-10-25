@@ -33,7 +33,7 @@ export function occursOn(t: Task, date: string): boolean {
     case 'monthly': {
       const a = fromISO(anchor);
       const d = fromISO(date);
-      return d.getDate() === Math.min(a.getDate(), daysInMonth(d.getFullYear(), d.getMonth()));
+      return d.getDate() === Math.min(r.dom ?? a.getDate(), daysInMonth(d.getFullYear(), d.getMonth()));
     }
   }
 }

@@ -441,3 +441,29 @@ export const endStay = (d: AppData, id: string, lastDay: string): AppData => ({
     stays: d.settings.stays.flatMap((s) => (s.id !== id ? [s] : lastDay < s.from ? [] : [{ ...s, until: lastDay < s.until ? lastDay : s.until }])),
   },
 });
+
+/** ---- To-do list operations (Seed Pouch) ---- */
+
+/** Save a hand arrangement: each listed task gets its new place. */
+export const setOrder = (d: AppData, updates: Array<{ id: string; order: number }>): AppData => {
+  const by = new Map(updates.map((u) => [u.id, u.order]));
+  return { ...d, tasks: d.tasks.map((t) => (by.has(t.id) ? { ...t, order: by.get(t.id)! } : t)) };
+};
+
+/**
+ * Put a late or due-today task off to a later day. A one-off task moves its day (and its due date, if that would
+ * otherwise still be late); one occurrence of a recurring task is skipped and a one-off copy appears on the new day.
+ */
+export function snoozeTask(d: AppData, id: string, fromDate: string, to: string): AppData {
+  const t = d.tasks.find((x) => x.id === id);
+  if (!t) return d;
+  if (t.recurrence) return moveOccurrence(d, id, fromDate, { date: to });
+  return mapTask(d, id, (x) => ({ ...x, date: to, ...(x.due && x.due < to ? { due: to } : {}) }));
+}
+
+/** Add tasks that are not here yet (matched by id), leaving everything that is already here untouched. */
+export function importTasks(d: AppData, incoming: Task[]): AppData {
+  const have = new Set(d.tasks.map((t) => t.id));
+  const fresh = incoming.filter((t) => !have.has(t.id));
+  return fresh.length ? { ...d, tasks: [...d.tasks, ...fresh] } : d;
+}

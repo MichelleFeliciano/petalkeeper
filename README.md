@@ -28,7 +28,7 @@ npm run preview    # serve the production build locally
 | Today's Garden | Daily dashboard: next up, timeline, flexible tasks, progress, quick add, **Adjust My Day**, copy yesterday's plan |
 | Daily Rituals | Morning / evening checklists (editable, reorderable, skip-able; resets every day) |
 | The Garden Path | Weekly planner (week grid or agenda), move tasks between days, overlap warnings |
-| Seed Pouch | All tasks with filters: Today, Upcoming, Overdue, Unscheduled, Completed |
+| Seed Pouch | Your to-do list: one-line add ("pay rent friday"), filters (Today, Upcoming, Overdue, Unscheduled, Completed), sorting incl. "My order", snooze, swipe, Undo/Redo, and bringing in to-dos from Second Memory |
 | Garden Shed | Settings, JSON export/import, reset |
 
 Garden behaviour is deliberately kind: blooms only ever accumulate, nothing withers, there are no streaks, and the fairy and garden can be switched off in the Garden Shed without affecting any scheduling feature.
@@ -132,3 +132,22 @@ The app must be hosted at a web address so your phone can open it. Hosting is fr
 - **Damaged-data recovery** banner, number boxes you can clear while typing, and notes that **autosave** as you pause.
 - Automated **accessibility checks** (axe) in the test suite.
 - Home-screen **shortcuts**, an **offline** note, **paste a list** to add routine steps, a **tomorrow preview** in the evening, **undo** for the "do this now" buttons, a **shareable summary** (print, PDF or copy as text), and a **week-at-a-glance** routine grid.
+
+## To-do list and calendar (added 2026-10-25, replaces the to-do list and calendar in Second Memory)
+
+Everything lives in the Seed Pouch, The Garden Path and Today; there is no separate to-do store, so sync, backups and the week grid all keep working.
+
+- **One-line add**: type what needs doing; date words at the very start or end set the day ("pay rent friday", "call mom tomorrow", "renew in 2 weeks", "dentist on oct 20", "3/15 file taxes"). A day picked in the box wins. Optional repeat: every day, week or month.
+- **Sort**: soonest, latest, **My order** (drag a row, or use the up/down buttons), newest or oldest added. The choice is remembered on the device. Finished tasks always sit last.
+- **Snooze**: a task that is late or due today shows **Tomorrow** and **Next week** buttons.
+- **Rename in place** by tapping the title. **Swipe** on a touch screen: right ticks it off, left removes it (with Undo).
+- **Undo and Redo** buttons (up to 50 steps) for adding, editing, ticking, moving, snoozing, deleting and reordering tasks.
+- **Month calendar**: The Garden Path now has **Week / Agenda / Month**. A filled dot is something still to do that day, a hollow dot means everything is finished; tap a day to see it.
+- **On the horizon** (Today): tasks that are late or fall in the next 7 days.
+- **Daily nudge** (Garden Shed > Reminders): pick a time and, with notifications on, you get one note a day when to-dos are due today or late. It only works while Petalkeeper is open, like the other reminders.
+- **Monthly repeats on a fixed day** (for example the 31st) keep their day in short months.
+- **Bring in to-dos from Second Memory** (Garden Shed): pick a Second Memory "Export data" file. To-dos keep their day, repeat, finished state, order and date added; anything already here is skipped, so it is safe to do twice and nothing here is changed. Only the to-do list is read.
+
+Differences from Second Memory: a finished repeating to-do there already had its next one made, so it comes in as a plain finished task and the open one repeats; the sort choice and snooze are per device / per task; reminders need the app open.
+
+Code: `src/lib/dateWords.ts`, `src/lib/todo.ts`, `src/lib/secondMemoryImport.ts`, `src/components/TodoQuickAdd.tsx`, `src/components/MonthView.tsx`, `src/components/SecondMemoryTodos.tsx`, `src/store.tsx` (undo/redo). Tests: `src/test/todo.test.ts`, `src/test/todoScreens.test.tsx`.

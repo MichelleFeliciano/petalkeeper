@@ -26,13 +26,18 @@ export interface Store extends Wrapped {
   resetEverything: () => void;
   /** show a brief, friendly message */
   notify: (text: string) => void;
+  /** take back the latest change to tasks (or routines/templates), up to the last 50 */
   undo: () => void;
+  /** do again what was just taken back */
+  redo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
   dismissToast: () => void;
   /** run an action and offer to undo it for a few seconds */
   undoable: (label: string, run: () => void) => void;
 }
 
-/** operations that can be undone for a few seconds, with the message to show */
+/** operations that offer a few seconds to undo, with the message to show */
 const UNDOABLE: Record<string, string> = {
   deleteTask: 'Removed.',
   deleteOccurrence: 'Removed for that day.',
@@ -42,7 +47,18 @@ const UNDOABLE: Record<string, string> = {
   applyTemplate: 'Template added.',
   splitOccurrence: 'Saved for just that day.',
   deleteTemplate: 'Template removed.',
+  snoozeTask: 'Put off for later.',
+  importTasks: 'Brought in.',
 };
+
+/** other operations that change tasks quietly (no toast) but can still be undone and redone with the Undo and Redo buttons */
+const QUIET_HISTORY = new Set(['addTask', 'updateTask', 'duplicateTask', 'toggleDone', 'toggleSubtask', 'setOrder']);
+
+/** changes made within this many milliseconds of each other (one tap that changes several things) share one undo step */
+const COALESCE_MS = 300;
+
+/** how many steps back Undo can go */
+const HISTORY_LIMIT = 50;
 
 const Ctx = createContext<Store | null>(null);
 let toastId = 0;
@@ -52,11 +68,16 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [today, setToday] = useState(todayISO());
   const [saveFailed, setSaveFailed] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
-  const snap = useRef<AppData | null>(null);
+  // Snapshots before each tracked change (past) and the ones undone (future).
+  const past = useRef<AppData[]>([]);
+  const future = useRef<AppData[]>([]);
   const snapAt = useRef(0);
+  const current = useRef<AppData>(data);
+  const [, setHistoryTick] = useState(0);
   const labelOverride = useRef<string | null>(null);
 
   useEffect(() => {
+    current.current = data;
     setSaveFailed(!saveData(data));
   }, [data]);
 
@@ -84,28 +105,35 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(t);
   }, [toast]);
 
-  const apply = useCallback((fn: (d: AppData) => AppData, label?: string) => {
+  const apply = useCallback((fn: (d: AppData) => AppData, label?: string, tracked = false) => {
     setData((d) => {
-      // several changes made together (e.g. Adjust My Day) share one undo
-      if (label && Date.now() - snapAt.current > 1000) {
-        snap.current = d;
+      // several changes made together (e.g. Adjust My Day) share one undo step
+      if (tracked && Date.now() - snapAt.current > COALESCE_MS && past.current[past.current.length - 1] !== d) {
+        past.current.push(d);
+        if (past.current.length > HISTORY_LIMIT) past.current.shift();
+        future.current = [];
         snapAt.current = Date.now();
       }
       return fn(d);
     });
+    if (tracked) setHistoryTick((n) => n + 1);
     if (label) setToast({ id: ++toastId, text: label, undoable: true });
   }, []);
 
   const store = useMemo<Store>(() => {
-    const clearUndo = () => {
-      snap.current = null;
+    const clearHistory = () => {
+      past.current = [];
+      future.current = [];
+      setHistoryTick((n) => n + 1);
       setToast((t) => (t?.undoable ? null : t));
     };
     const w: Record<string, unknown> = {};
     for (const [name, fn] of Object.entries(ops)) {
       if (name === 'routineDay') continue;
+      const label = UNDOABLE[name];
+      const tracked = !!label || QUIET_HISTORY.has(name);
       w[name] = (...args: unknown[]) =>
-        apply((d) => (fn as (d: AppData, ...a: unknown[]) => AppData)(d, ...args), labelOverride.current ?? UNDOABLE[name]);
+        apply((d) => (fn as (d: AppData, ...a: unknown[]) => AppData)(d, ...args), labelOverride.current ?? label, tracked || !!labelOverride.current);
     }
     return {
       ...(w as unknown as Wrapped),
@@ -113,22 +141,39 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       today,
       saveFailed,
       toast,
+      canUndo: past.current.length > 0,
+      canRedo: future.current.length > 0,
       replaceAll: (d: AppData) => {
-        clearUndo();
+        clearHistory();
         setData(d);
       },
       resetSample: () => {
-        clearUndo();
+        clearHistory();
         setData({ ...sampleData(), settings: data.settings });
       },
       resetEverything: () => {
-        clearUndo();
+        clearHistory();
         setData({ version: 1, tasks: [], routines: [], routineLog: {}, settings: { ...DEFAULT_SETTINGS }, blooms: 0, templates: [], counters: [], counterLog: {}, checkins: {}, needed: [], neededLog: {}, countdowns: [] });
       },
       notify: (text: string) => setToast({ id: ++toastId, text, undoable: false }),
       undo: () => {
-        if (snap.current) setData(snap.current);
-        snap.current = null;
+        const prev = past.current.pop();
+        if (prev) {
+          future.current.push(current.current);
+          setData(prev);
+        }
+        snapAt.current = 0;
+        setHistoryTick((n) => n + 1);
+        setToast(null);
+      },
+      redo: () => {
+        const next = future.current.pop();
+        if (next) {
+          past.current.push(current.current);
+          setData(next);
+        }
+        snapAt.current = 0;
+        setHistoryTick((n) => n + 1);
         setToast(null);
       },
       dismissToast: () => setToast(null),

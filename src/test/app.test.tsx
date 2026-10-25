@@ -54,7 +54,9 @@ describe('Petalkeeper app', () => {
     const row = within(dialog).getByText('Grocery run').closest('li')!;
     await user.selectOptions(within(row).getByRole('combobox'), 'tomorrow');
     await user.click(within(dialog).getByRole('button', { name: /Apply 1 change/ }));
-    expect(screen.queryByText('Grocery run')).not.toBeInTheDocument();
+    // it leaves today's plan and now shows under "On the horizon" (the next 7 days)
+    expect(within(screen.getByRole('region', { name: /Flexible tasks/ })).queryByText('Grocery run')).not.toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: /On the horizon/ })).getByText('Grocery run')).toBeInTheDocument();
     // still exists in the pouch/week, not deleted
     expect(localStorage.getItem(STORAGE_KEY)).toContain('Grocery run');
   });

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { StoreProvider, useStore } from './store';
 import { itemsOn, isDone } from './lib/schedule';
+import { reminderCount, reminderText } from './lib/todo';
 import { fmtTime, nowMinutes, toMinutes } from './lib/dates';
 import { UIProvider } from './ui';
 import { SyncProvider, useSync } from './sync';
@@ -32,6 +33,9 @@ const fromHash = (): PageId | null => {
   return PAGES.find((p) => p.id === h)?.id ?? null;
 };
 
+const TODO_NUDGE_KEY = 'petalkeeper.todoNudgedOn';
+const now0 = () => nowMinutes();
+
 /** Gentle reminders. Only fire while the app is open; nothing runs in the background. */
 function useReminders() {
   const { data, today } = useStore();
@@ -49,10 +53,22 @@ function useReminders() {
         }
       }
     };
-    tick();
-    const t = setInterval(tick, 30_000);
+    // One gentle nudge a day, at the chosen time, about to-dos that are due today or late (once per day on this device).
+    const nudge = () => {
+      const at = data.settings.todoRemindAt;
+      if (!at || now0() < toMinutes(at)) return;
+      let last: string | null = null;
+      try { last = localStorage.getItem(TODO_NUDGE_KEY); } catch { /* not remembered: may nudge again after a reload */ }
+      if (last === today) return;
+      try { localStorage.setItem(TODO_NUDGE_KEY, today); } catch { /* ignore */ }
+      const n = reminderCount(data.tasks, today);
+      if (n > 0) new Notification('Petalkeeper', { body: reminderText(n), icon: './icon.svg' });
+    };
+    const both = () => { tick(); nudge(); };
+    both();
+    const t = setInterval(both, 30_000);
     return () => clearInterval(t);
-  }, [data.tasks, data.settings.notifications, data.settings.notifyLead, today]);
+  }, [data.tasks, data.settings.notifications, data.settings.notifyLead, data.settings.todoRemindAt, today]);
 }
 
 function ToastBar() {

@@ -1,8 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useStore } from '../store';
 import { useUI } from '../ui';
 import { TaskCard } from '../components/TaskCard';
+import { TodoQuickAdd } from '../components/TodoQuickAdd';
 import { occursOn, nextOccurrence } from '../lib/schedule';
+import { TODO_SORTS, canSnooze, reorder, snoozeTo, sortTodos, stepTask, type TodoSort } from '../lib/todo';
 import type { Task } from '../lib/types';
 
 type Filter = 'all' | 'today' | 'upcoming' | 'overdue' | 'unscheduled' | 'completed';
@@ -34,30 +36,63 @@ export function matches(t: Task, f: Filter, today: string): boolean {
   }
 }
 
+const SORT_KEY = 'petalkeeper.seedsSort';
+function loadSort(): TodoSort {
+  try {
+    const v = localStorage.getItem(SORT_KEY);
+    return TODO_SORTS.some(([k]) => k === v) ? (v as TodoSort) : 'date_asc';
+  } catch {
+    return 'date_asc';
+  }
+}
+
 export function Seeds() {
-  const { data, today } = useStore();
-  const { openForm } = useUI();
+  const { data, today, undo, redo, canUndo, canRedo, updateTask, toggleDone, deleteTask, snoozeTask, setOrder } = useStore();
+  const { openForm, askDelete } = useUI();
   const [filter, setFilter] = useState<Filter>('all');
   const [q, setQ] = useState('');
+  const [sort, setSortState] = useState<TodoSort>(loadSort);
+  const dragId = useRef<string | null>(null);
+  const [dropOn, setDropOn] = useState<string | null>(null);
+  const setSort = (s: TodoSort) => {
+    setSortState(s);
+    try { localStorage.setItem(SORT_KEY, s); } catch { /* the choice just is not remembered */ }
+  };
+
   const list = useMemo(
     () =>
-      data.tasks
-        .filter((t) => {
+      sortTodos(
+        data.tasks.filter((t) => {
           const query = q.trim().toLowerCase();
           if (query) return (t.title + ' ' + t.notes + ' ' + t.subtasks.map((x) => x.title).join(' ')).toLowerCase().includes(query);
           return matches(t, filter, today);
-        })
-        .sort((a, b) => (a.date ?? '9999').localeCompare(b.date ?? '9999')),
-    [data.tasks, filter, today, q],
+        }),
+        sort,
+        today,
+      ),
+    [data.tasks, filter, today, q, sort],
   );
+  const ids = list.map((t) => t.id);
+  const manual = sort === 'manual';
+  const dayOf = (t: Task) => (t.recurrence ? (nextOccurrence(t, today) ?? t.date ?? today) : (t.date ?? t.due ?? today));
+  const apply = (updates: Array<{ id: string; order: number }>) => updates.length && setOrder(updates);
 
   return (
     <div className="page">
       <header>
-        <p className="eyebrow">Seed Pouch · tasks &amp; ideas waiting for a day</p>
+        <p className="eyebrow">Seed Pouch · your to-do list: tasks &amp; ideas waiting for a day</p>
         <h1>Seed Pouch</h1>
-        <div className="actions left">
-          <button className="btn primary" onClick={() => openForm()}>＋ Add a seed</button>
+        <TodoQuickAdd />
+        <div className="todo-tools">
+          <button className="btn" onClick={() => openForm()}>＋ Add with details</button>
+          <button className="btn ghost" onClick={undo} disabled={!canUndo}>↶ Undo</button>
+          <button className="btn ghost" onClick={redo} disabled={!canRedo}>↷ Redo</button>
+          <label className="inline">
+            <span>Sort</span>
+            <select value={sort} onChange={(e) => setSort(e.target.value as TodoSort)} aria-label="Sort tasks">
+              {TODO_SORTS.map(([k, label]) => <option key={k} value={k}>{label}</option>)}
+            </select>
+          </label>
         </div>
         <label className="search">
           <span className="sr">Search tasks</span>
@@ -79,8 +114,42 @@ export function Seeds() {
         </p>
       )}
       {list.map((t) => {
-        const d = t.recurrence ? (nextOccurrence(t, today) ?? t.date ?? today) : (t.date ?? today);
-        return <TaskCard key={t.id} occ={{ task: t, date: d, key: t.id }} showDate={!!t.date && !t.recurrence} />;
+        const d = dayOf(t);
+        const mover = manual && (
+          <span className="snooze">
+            <button className="btn small" onClick={() => apply(stepTask(ids, t.id, -1))} aria-label={`Move ${t.title} up`}>↑</button>
+            <button className="btn small" onClick={() => apply(stepTask(ids, t.id, 1))} aria-label={`Move ${t.title} down`}>↓</button>
+          </span>
+        );
+        const snooze = canSnooze(t, today) && (
+          <span className="snooze">
+            <button className="btn small" onClick={() => snoozeTask(t.id, d, snoozeTo(today, 'tomorrow'))} aria-label={`Put off ${t.title} until tomorrow`}>Tomorrow</button>
+            <button className="btn small" onClick={() => snoozeTask(t.id, d, snoozeTo(today, 'week'))} aria-label={`Put off ${t.title} until next week`}>Next week</button>
+          </span>
+        );
+        return (
+          <div
+            key={t.id}
+            className={'todo-row' + (dropOn === t.id ? ' drop-target' : '')}
+            draggable={manual}
+            onDragStart={() => { dragId.current = t.id; }}
+            onDragOver={(e) => { if (manual) { e.preventDefault(); setDropOn(t.id); } }}
+            onDragLeave={() => setDropOn((c) => (c === t.id ? null : c))}
+            onDrop={() => {
+              setDropOn(null);
+              if (manual && dragId.current && dragId.current !== t.id) apply(reorder(ids, dragId.current, ids.indexOf(t.id)));
+              dragId.current = null;
+            }}
+          >
+            <TaskCard
+              occ={{ task: t, date: d, key: t.id }}
+              showDate={!!(t.date ?? t.due) && !t.recurrence}
+              onRename={(title) => updateTask(t.id, { title })}
+              onSwipe={(dir) => (dir === 'right' ? toggleDone(t.id, d) : t.recurrence ? askDelete(t, d) : deleteTask(t.id))}
+              extra={(mover || snooze) ? <>{snooze}{mover}</> : undefined}
+            />
+          </div>
+        );
       })}
     </div>
   );

@@ -18,6 +18,7 @@ function validTask(t: unknown): t is Task {
   if (!optDate(t.date) || !optDate(t.due) || !optTime(t.start) || !optTime(t.end)) return false;
   if (t.duration !== undefined && (typeof t.duration !== 'number' || t.duration < 0)) return false;
   if (typeof t.done !== 'boolean' || !isStr(t.createdAt)) return false;
+  if (t.order !== undefined && (typeof t.order !== 'number' || !Number.isFinite(t.order))) return false;
   if (!Array.isArray(t.subtasks) || !t.subtasks.every((s) => isObj(s) && isStr(s.id) && isStr(s.title) && typeof s.done === 'boolean')) return false;
   if (!Array.isArray(t.completions) || !t.completions.every(isISODate)) return false;
   if (!Array.isArray(t.skipped) || !t.skipped.every(isISODate)) return false;
@@ -26,6 +27,7 @@ function validTask(t: unknown): t is Task {
     const r = t.recurrence as unknown;
     if (!isObj(r) || !['daily', 'days', 'weekly', 'monthly'].includes(r.freq as string)) return false;
     if (r.until !== undefined && !isISODate(r.until)) return false;
+    if (r.dom !== undefined && !(Number.isInteger(r.dom) && (r.dom as number) >= 1 && (r.dom as number) <= 31)) return false;
     if (r.days !== undefined && !(Array.isArray(r.days) && r.days.every((d) => Number.isInteger(d) && d >= 0 && d <= 6))) return false;
   }
   return true;
@@ -88,6 +90,7 @@ export function validateData(raw: unknown): ValidateResult {
       (c): c is CategoryDef => isObj(c) && isStr(c.id) && isStr(c.label) && isStr(c.icon) && (c.color === undefined || isStr(c.color)),
     );
   }
+  if (isTime(s.todoRemindAt)) settings.todoRemindAt = s.todoRemindAt;
   if (isISODate(s.lastBackup)) settings.lastBackup = s.lastBackup;
   if (isISODate(s.backupSnooze)) settings.backupSnooze = s.backupSnooze;
   if (isISODate(s.pausedFrom)) settings.pausedFrom = s.pausedFrom;

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useStore } from '../store';
 import { useUI } from '../ui';
 import { TaskCard } from '../components/TaskCard';
+import { MonthView } from '../components/MonthView';
 import { findConflicts, isDone, itemsOn, type Occurrence } from '../lib/schedule';
 import { addDays, DAY_NAMES, fmtLong, fmtShort, fmtTime, weekDates, weekday } from '../lib/dates';
 import { categoryOf } from '../lib/types';
@@ -33,7 +34,7 @@ export function Path() {
   const { openForm } = useUI();
   const { weekStart, defaultDuration, buffer } = data.settings;
   const [anchor, setAnchor] = useState(today);
-  const [mode, setMode] = useState<'week' | 'agenda'>('week');
+  const [mode, setMode] = useState<'week' | 'agenda' | 'month'>('week');
   const [review, setReview] = useState(false);
   const [dragOver, setDragOver] = useState<string | null>(null);
   const dates = weekDates(anchor, weekStart);
@@ -77,6 +78,7 @@ export function Path() {
           <div className="tabs inline" role="group" aria-label="View">
             <button className={'tab' + (mode === 'week' ? ' on' : '')} aria-pressed={mode === 'week'} onClick={() => setMode('week')}>Week</button>
             <button className={'tab' + (mode === 'agenda' ? ' on' : '')} aria-pressed={mode === 'agenda'} onClick={() => setMode('agenda')}>Agenda</button>
+            <button className={'tab' + (mode === 'month' ? ' on' : '')} aria-pressed={mode === 'month'} onClick={() => setMode('month')}>Month</button>
           </div>
           <button className="btn ghost" onClick={() => setReview(!review)} aria-expanded={review}>Week in review</button>
           <button className="btn ghost" onClick={() => downloadText(`petalkeeper-week-${dates[0]}.ics`, buildICS(data.tasks, dates[0], 7, defaultDuration), 'text/calendar')}>Add to calendar (.ics)</button>
@@ -86,7 +88,9 @@ export function Path() {
       </header>
 
       {review && <WeekReview dates={dates} />}
-      {mode === 'week' ? (
+      {mode === 'month' ? (
+        <MonthView />
+      ) : mode === 'week' ? (
         <div className="week-grid">
           {dates.map((d) => {
             const { its, bad } = byDay[d];

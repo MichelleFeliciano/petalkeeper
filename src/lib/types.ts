@@ -46,6 +46,8 @@ export interface Recurrence {
   days?: number[];
   /** inclusive last date, YYYY-MM-DD */
   until?: string;
+  /** for 'monthly': the day of the month to repeat on, when it is not the day of the first date (for example 31 after a short month) */
+  dom?: number;
 }
 
 export interface Task {
@@ -73,6 +75,8 @@ export interface Task {
   /** per-date subtask completion for recurring tasks */
   subDone: Record<string, string[]>;
   createdAt: string;
+  /** place in a hand-arranged list ("My order" in the Seed Pouch); missing until the list is arranged */
+  order?: number;
 }
 
 /** Routines belong to a part of the day, not a clock time: "first thing", "winding down"… */
@@ -157,6 +161,8 @@ export interface Settings {
   place: string;
   /** stays planned ahead, like a weekend at Mom's; they switch the place by themselves */
   stays: Stay[];
+  /** HH:MM for a daily nudge about to-dos that are due today or late (missing = off); needs notifications on */
+  todoRemindAt?: string;
 }
 
 export interface TemplateItem {

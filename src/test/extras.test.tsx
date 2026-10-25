@@ -5,7 +5,7 @@ import App from '../App';
 import * as ops from '../lib/ops';
 import { buildICS } from '../lib/ics';
 import { weekSummary } from '../lib/summary';
-import { makeTask, occursOn } from '../lib/schedule';
+import { makeTask, occursOn, routineDaysLabel, routineOn } from '../lib/schedule';
 import { exportJSON, parseImport } from '../lib/storage';
 import { sampleData } from '../lib/seed';
 import { emptyForTest } from './helpers';
@@ -170,5 +170,47 @@ describe('routines for parts of the day', () => {
     await user.click(screen.getByRole('button', { name: 'Add step' }));
     await user.click(screen.getByRole('button', { name: /Today's Garden/ }));
     expect(screen.getByText('New midday routine')).toBeInTheDocument();
+  });
+});
+
+describe('routines for certain weekdays', () => {
+  it('only belong on the days chosen, and validate on import', () => {
+    let d = ops.addRoutine(emptyForTest(), 'morning', 'Therapy day');
+    d = ops.setRoutineDays(d, d.routines[0].id, [2]);
+    const r = d.routines[0];
+    expect(routineOn(r, '2026-03-03')).toBe(true); // a Tuesday
+    expect(routineOn(r, '2026-03-04')).toBe(false);
+    expect(routineDaysLabel([2])).toBe('Tuesdays');
+    expect(routineDaysLabel([1, 3, 5])).toBe('Mon, Wed & Fri');
+    // picking every day (or none) means "every day"
+    expect(ops.setRoutineDays(d, r.id, []).routines[0].days).toBeUndefined();
+    expect(ops.setRoutineDays(d, r.id, [0, 1, 2, 3, 4, 5, 6]).routines[0].days).toBeUndefined();
+    expect(parseImport(exportJSON(d)).ok).toBe(true);
+    expect(parseImport(JSON.stringify({ ...d, routines: [{ ...r, days: [9] }] })).ok).toBe(false);
+  });
+
+  it('shows a day-specific routine on Today only on its day', async () => {
+    window.location.hash = '';
+    const user = userEvent.setup();
+    render(<App />);
+    const today = new Date().getDay();
+    const other = (today + 1) % 7;
+    const names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    await user.click(screen.getByRole('button', { name: /Daily Rituals/ }));
+    await user.click(screen.getByRole('tab', { name: /Afternoon/ }));
+    await user.click(screen.getByRole('button', { name: /New afternoon routine/ }));
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    await user.type(screen.getByLabelText('New step name'), 'Do laundry');
+    await user.click(screen.getByRole('button', { name: 'Add step' }));
+    await user.click(screen.getByRole('checkbox', { name: names[other] }));
+    await user.click(screen.getByRole('button', { name: /Today's Garden/ }));
+    expect(screen.queryByText('New afternoon routine')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /Daily Rituals/ }));
+    await user.click(screen.getByRole('tab', { name: /Afternoon/ }));
+    await user.click(screen.getByRole('button', { name: 'Edit' }));
+    await user.click(screen.getByRole('checkbox', { name: names[other] }));
+    await user.click(screen.getByRole('checkbox', { name: names[today] }));
+    await user.click(screen.getByRole('button', { name: /Today's Garden/ }));
+    expect(screen.getByText('New afternoon routine')).toBeInTheDocument();
   });
 });

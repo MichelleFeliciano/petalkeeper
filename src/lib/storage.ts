@@ -42,6 +42,7 @@ export function validateData(raw: unknown): ValidateResult {
   for (const r of raw.routines) {
     if (
       !isObj(r) || !isStr(r.id) || !isStr(r.name) || !PARTS.some((p) => p.id === r.kind) ||
+      (r.days !== undefined && !(Array.isArray(r.days) && r.days.every((x) => Number.isInteger(x) && x >= 0 && x <= 6))) ||
       !Array.isArray(r.steps) || !r.steps.every((s) => isObj(s) && isStr(s.id) && isStr(s.title))
     ) {
       return { ok: false, error: 'Some routines in the file are malformed.' };

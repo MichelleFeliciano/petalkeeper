@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useStore } from '../store';
 import { Modal } from '../components/Modal';
 import { routineDay } from '../lib/ops';
-import { newId } from '../lib/schedule';
+import { newId, routineDaysLabel, routineOn } from '../lib/schedule';
 import { fmtDuration } from '../lib/dates';
 import { PARTS, currentPart, partOf, type PartOfDay, type Routine } from '../lib/types';
 
@@ -107,6 +107,8 @@ function RoutineCard({ routine }: { routine: Routine }) {
         ) : (
           <h2>{routine.name}</h2>
         )}
+        {routine.days && routine.days.length > 0 && <span className="badge">{routineDaysLabel(routine.days)}</span>}
+        {!routineOn(routine, today) && <span className="meta">Not on today's list</span>}
         <span className="meta">
           {done}/{active.length} done{total > 0 ? ` · about ${fmtDuration(total)}` : ''}
         </span>
@@ -177,6 +179,24 @@ function RoutineCard({ routine }: { routine: Routine }) {
             <input aria-label="Minutes (optional)" type="number" min="1" placeholder="min" value={mins} onChange={(e) => setMins(e.target.value)} style={{ maxWidth: 90 }} />
             <button className="btn" onClick={add}>Add step</button>
           </div>
+          <fieldset className="day-chips">
+            <legend>Which days? (none picked = every day)</legend>
+            {(data.settings.weekStart === 1 ? [1, 2, 3, 4, 5, 6, 0] : [0, 1, 2, 3, 4, 5, 6]).map((n) => {
+              const on = routine.days?.includes(n) ?? false;
+              const name = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][n];
+              return (
+                <label key={n} className={'chip' + (on ? ' on' : '')}>
+                  <input
+                    type="checkbox"
+                    aria-label={name}
+                    checked={on}
+                    onChange={() => s.setRoutineDays(routine.id, on ? (routine.days ?? []).filter((x) => x !== n) : [...(routine.days ?? []), n])}
+                  />
+                  {name.slice(0, 3)}
+                </label>
+              );
+            })}
+          </fieldset>
           <label className="inline">
             Part of the day{' '}
             <select value={routine.kind} onChange={(e) => s.setRoutineKind(routine.id, e.target.value as PartOfDay)}>

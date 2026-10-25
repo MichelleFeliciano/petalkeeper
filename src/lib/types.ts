@@ -94,6 +94,8 @@ export interface Routine {
   kind: PartOfDay;
   name: string;
   steps: RoutineStep[];
+  /** weekdays it belongs to (0 = Sunday … 6 = Saturday). Empty or missing means every day. */
+  days?: number[];
 }
 
 export interface RoutineStep {

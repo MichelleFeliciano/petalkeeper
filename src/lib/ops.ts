@@ -131,6 +131,16 @@ export const setRoutineKind = (d: AppData, id: string, kind: Routine['kind']): A
   routines: d.routines.map((r) => (r.id === id ? { ...r, kind } : r)),
 });
 
+export const setRoutineDays = (d: AppData, id: string, days: number[]): AppData => ({
+  ...d,
+  routines: d.routines.map((r) => {
+    if (r.id !== id) return r;
+    const { days: _old, ...rest } = r;
+    void _old;
+    return days.length === 0 || days.length === 7 ? rest : { ...rest, days: [...days].sort((a, b) => a - b) };
+  }),
+});
+
 export const renameRoutine = (d: AppData, id: string, name: string): AppData => ({
   ...d,
   routines: d.routines.map((r) => (r.id === id ? { ...r, name } : r)),

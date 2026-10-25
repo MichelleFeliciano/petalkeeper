@@ -8,7 +8,7 @@ import { TemplatesModal } from '../components/TemplatesModal';
 import { Fairy, GardenStrip, type Pose } from '../components/Fairy';
 import { PARTS, currentPart } from '../lib/types';
 import { routineDay } from '../lib/ops';
-import { findConflicts, isDone, itemsOn } from '../lib/schedule';
+import { findConflicts, isDone, itemsOn, routineOn } from '../lib/schedule';
 import { addDays, fmtDuration, fmtLong, fmtTime, fromISO, nowMinutes, toMinutes } from '../lib/dates';
 import type { Priority } from '../lib/types';
 
@@ -26,7 +26,7 @@ const prio: Record<Priority, number> = { high: 0, normal: 1, low: 2 };
 function TodaysRoutines() {
   const { data, today, toggleStep } = useStore();
   const now = currentPart(new Date().getHours());
-  const groups = PARTS.map((p) => ({ p, rs: data.routines.filter((r) => r.kind === p.id && r.steps.length > 0) })).filter((g) => g.rs.length > 0);
+  const groups = PARTS.map((p) => ({ p, rs: data.routines.filter((r) => r.kind === p.id && r.steps.length > 0 && routineOn(r, today)) })).filter((g) => g.rs.length > 0);
   if (groups.length === 0) return null;
   return (
     <section className="card" aria-labelledby="tr-h">

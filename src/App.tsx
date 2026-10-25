@@ -18,12 +18,12 @@ import { Shed } from './pages/Shed';
 import { Journal } from './pages/Journal';
 
 const PAGES = [
-  { id: 'today', label: "Today's Garden", sub: 'Your day', icon: '🌼' },
-  { id: 'rituals', label: 'Daily Rituals', sub: 'Routines', icon: '🌿' },
-  { id: 'path', label: 'The Garden Path', sub: 'Week', icon: '🗓️' },
-  { id: 'seeds', label: 'Seed Pouch', sub: 'Tasks', icon: '🌱' },
-  { id: 'journal', label: 'Garden Journal', sub: 'Moods & notes', icon: '📖' },
-  { id: 'shed', label: 'Garden Shed', sub: 'Settings', icon: '🧺' },
+  { id: 'today', label: "Today's Garden", short: 'Today', sub: 'Your day', icon: '🌼' },
+  { id: 'rituals', label: 'Daily Rituals', short: 'Routines', sub: 'Routines', icon: '🌿' },
+  { id: 'path', label: 'The Garden Path', short: 'Week', sub: 'Week', icon: '🗓️' },
+  { id: 'seeds', label: 'Seed Pouch', short: 'Tasks', sub: 'Tasks', icon: '🌱' },
+  { id: 'journal', label: 'Garden Journal', short: 'Journal', sub: 'Moods & notes', icon: '📖' },
+  { id: 'shed', label: 'Garden Shed', short: 'Settings', sub: 'Settings', icon: '🧺' },
 ] as const;
 type PageId = (typeof PAGES)[number]['id'];
 
@@ -68,7 +68,7 @@ function ToastBar() {
 }
 
 /** A small "is my other device up to date?" line under the menu. Tap it to open the sync settings. */
-function SyncChip({ onOpen }: { onOpen: () => void }) {
+function SyncChip({ onOpen, variant }: { onOpen: () => void; variant: 'side' | 'top' }) {
   const sync = useSync();
   const { today } = useStore();
   const [, tick] = useState(0);
@@ -83,7 +83,7 @@ function SyncChip({ onOpen }: { onOpen: () => void }) {
   const text =
     sync.status === 'syncing' ? 'Syncing…' : sync.status === 'error' ? 'Sync problem. Tap to see' : expiring ? (left! <= 0 ? 'Token expired. Tap to renew' : `Token expires in ${left} day${left === 1 ? '' : 's'}`) : mins === null ? 'Sync is on' : mins < 1 ? 'Synced just now' : `Synced ${mins} min ago`;
   return (
-    <button className={'sync-chip' + (sync.status === 'error' || expiring ? ' bad' : '')} onClick={onOpen} aria-label={`Sync status: ${text}. Open sync settings`}>
+    <button className={'sync-chip ' + variant + (sync.status === 'error' || expiring ? ' bad' : '')} onClick={onOpen} aria-label={`Sync status: ${text}. Open sync settings`}>
       <span aria-hidden="true">{sync.status === 'error' || expiring ? '⚠️' : '☁️'}</span> {text}
     </button>
   );
@@ -181,15 +181,20 @@ function Shell() {
         </div>
         <nav aria-label="Main">
           {PAGES.map((p) => (
-            <button key={p.id} className={'nav-item' + (page === p.id ? ' on' : '')} aria-current={page === p.id ? 'page' : undefined} onClick={() => go(p.id)}>
+            <button key={p.id} className={'nav-item' + (page === p.id ? ' on' : '')} aria-current={page === p.id ? 'page' : undefined} aria-label={p.label} onClick={() => go(p.id)}>
               <span aria-hidden="true" className="ic">{p.icon}</span>
-              <span className="lbl">{p.label}<small>{p.sub}</small></span>
+              <span className="lbl" aria-hidden="true">
+                <span className="full">{p.label}</span>
+                <span className="short">{p.short}</span>
+                <small>{p.sub}</small>
+              </span>
             </button>
           ))}
         </nav>
-        <SyncChip onOpen={() => go('shed')} />
+        <SyncChip variant="side" onOpen={() => go('shed')} />
       </aside>
       <main id="main" tabIndex={-1}>
+        <SyncChip variant="top" onOpen={() => go('shed')} />
         <OfflineNote />
         {page === 'today' && <Today />}
         {page === 'rituals' && <Rituals />}

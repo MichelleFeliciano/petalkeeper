@@ -69,6 +69,31 @@ function NumField({ value, min, step, onCommit }: { value: number; min: number; 
   );
 }
 
+const JUMPS: [string, string][] = [
+  ['pref-h', 'Preferences'],
+  ['nt-h', 'Reminders'],
+  ['cc-h', 'Categories'],
+  ['pl-h', 'Places'],
+  ['sy-h', 'Sync'],
+  ['dv-h', 'This device'],
+  ['bk-h', 'Backup'],
+  ['up-h', 'Updates'],
+  ['rs-h', 'Start fresh'],
+];
+
+/** A row of shortcuts so a long settings page is quick to get around on a phone. */
+function JumpBar() {
+  return (
+    <nav className="jump" aria-label="Jump to a section">
+      {JUMPS.map(([id, label]) => (
+        <button key={id} className="tab" onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+          {label}
+        </button>
+      ))}
+    </nav>
+  );
+}
+
 export function Shed() {
   const s = useStore();
   const { settings } = s.data;
@@ -114,6 +139,8 @@ export function Shed() {
         <p className="eyebrow">Garden Shed · settings &amp; backups</p>
         <h1>Garden Shed</h1>
       </header>
+
+      <JumpBar />
 
       <section className="card form" aria-labelledby="pref-h">
         <h2 id="pref-h">Preferences</h2>

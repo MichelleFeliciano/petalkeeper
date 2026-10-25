@@ -96,7 +96,7 @@ export function Counters() {
   const row = data.counterLog[today] ?? {};
   if (data.counters.length === 0 && !adding) {
     return (
-      <section className="card" aria-label="Little counters">
+      <section className="card compact" aria-label="Little counters">
         <h2>Little counters</h2>
         <p className="hint">Count small things through the day, like glasses of water.</p>
         <button className="btn small" onClick={() => setAdding(true)}>＋ Add a counter</button>
@@ -187,7 +187,7 @@ export function AsNeeded() {
   const [icon, setIcon] = useState('🌿');
   const now = new Date();
   return (
-    <section className="card" aria-labelledby="an-h">
+    <section className={'card' + (data.needed.length === 0 && !adding ? ' compact' : '')} aria-labelledby="an-h">
       <h2 id="an-h">As needed</h2>
       <p className="hint">Things you do now and then. A quick tap remembers when. This is only your own record, not medical advice.</p>
       {data.needed.map((n) => {
@@ -240,7 +240,7 @@ export function Countdowns() {
   const upcoming = data.countdowns.filter((c) => daysUntil(c.date, today) >= 0).sort((a, b) => a.date.localeCompare(b.date));
   if (upcoming.length === 0 && !adding) {
     return (
-      <section className="card" aria-label="Coming up">
+      <section className="card compact" aria-label="Coming up">
         <h2>Coming up</h2>
         <button className="btn small" onClick={() => setAdding(true)}>＋ Add a countdown</button>
       </section>

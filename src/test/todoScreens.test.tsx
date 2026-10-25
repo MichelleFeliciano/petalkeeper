@@ -52,6 +52,8 @@ describe('Seed Pouch as a to-do list', () => {
     const { user } = setup();
     await user.type(screen.getByPlaceholderText(/What needs doing/), 'first name');
     await user.click(within(screen.getByRole('form', { name: 'Add a to-do' })).getByRole('button', { name: 'Add' }));
+    // changes made within a fraction of a second share one undo step, so let the add settle first
+    await new Promise((r) => setTimeout(r, 400));
     await user.click(screen.getByRole('button', { name: 'Rename first name' }));
     const box = screen.getByRole('textbox', { name: 'Rename first name' });
     await user.clear(box);

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import realExport from './fixtures/second-memory-export.sample.json?raw';
 import { makeTask, occursOn } from '../lib/schedule';
 import * as ops from '../lib/ops';
 import { emptyForTest } from './helpers';
@@ -224,5 +225,41 @@ describe('bringing in to-dos from Second Memory', () => {
     const json = JSON.stringify(plan.fresh);
     expect(json).not.toContain('never read');
     expect(json).not.toContain('private');
+  });
+});
+
+// A REAL export written by Second Memory version 82 (made with its own add functions; sample data only).
+describe('a real Second Memory v82 export', () => {
+  const real = JSON.parse(realExport);
+  const records = extractTodos(real)!;
+  const plan = planTodoCopy(records, [], new Date('2026-10-25T20:00:00Z'));
+  it('brings in all five to-dos (open, finished, repeating, late and undated)', () => {
+    expect(records).toHaveLength(5);
+    expect(plan.unreadable).toEqual([]);
+    expect(plan.fresh).toHaveLength(5);
+    const rent = plan.fresh.find((t) => t.title === 'Pay rent')!;
+    expect(rent).toMatchObject({ date: '2026-10-28', done: false, recurrence: { freq: 'monthly' } });
+    const call = plan.fresh.find((t) => t.title === 'Call mom')!;
+    expect(call).toMatchObject({ date: '2026-10-24', done: false });
+    expect(call.recurrence).toBeUndefined();
+    expect(plan.fresh.find((t) => t.title === 'No date task')!.date).toBeUndefined();
+  });
+  it('a finished repeating to-do stays finished, and its next one repeats', () => {
+    const water = plan.fresh.filter((t) => t.title === 'Water plants');
+    expect(water).toHaveLength(2);
+    const [finished, open] = [water.find((t) => t.done)!, water.find((t) => !t.done)!];
+    expect(finished).toMatchObject({ date: '2026-10-25', done: true });
+    expect(finished.recurrence).toBeUndefined();
+    expect(open).toMatchObject({ date: '2026-10-26', done: false, recurrence: { freq: 'daily' } });
+  });
+  it('the late one is flagged overdue and can be put off', () => {
+    const call = plan.fresh.find((t) => t.title === 'Call mom')!;
+    expect(isOverdue(call, '2026-10-25')).toBe(true);
+    expect(canSnooze(call, '2026-10-25')).toBe(true);
+  });
+  it('is accepted by the app, and importing again adds nothing', () => {
+    const d = ops.importTasks(emptyForTest(), plan.fresh);
+    expect(parseImport(exportJSON(d)).ok).toBe(true);
+    expect(planTodoCopy(records, d.tasks.map((t) => t.id)).fresh).toHaveLength(0);
   });
 });

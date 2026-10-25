@@ -321,3 +321,114 @@ export const setCheckin = (d: AppData, date: string, patch: Partial<Checkin>): A
   else checkins[date] = next;
   return { ...d, checkins };
 };
+
+/* ---------- as-needed items, countdowns, planned pauses, timing ---------- */
+
+export const addNeeded = (d: AppData, label: string, icon: string): AppData => ({ ...d, needed: [...d.needed, { id: newId(), label, icon }] });
+export const deleteNeeded = (d: AppData, id: string): AppData => {
+  const { [id]: _gone, ...log } = d.neededLog;
+  void _gone;
+  return { ...d, needed: d.needed.filter((n) => n.id !== id), neededLog: log };
+};
+export const markNeeded = (d: AppData, id: string, whenISO: string): AppData => ({
+  ...d,
+  neededLog: { ...d.neededLog, [id]: [...(d.neededLog[id] ?? []), whenISO].slice(-50) },
+});
+export const unmarkNeeded = (d: AppData, id: string): AppData => ({
+  ...d,
+  neededLog: { ...d.neededLog, [id]: (d.neededLog[id] ?? []).slice(0, -1) },
+});
+
+export const addCountdown = (d: AppData, label: string, icon: string, date: string): AppData => ({
+  ...d,
+  countdowns: [...d.countdowns, { id: newId(), label, icon, date }],
+});
+export const deleteCountdown = (d: AppData, id: string): AppData => ({ ...d, countdowns: d.countdowns.filter((c) => c.id !== id) });
+
+export const addPlannedPause = (d: AppData, from: string, until: string): AppData => ({
+  ...d,
+  settings: { ...d.settings, plannedPauses: [...d.settings.plannedPauses, { id: newId(), from, until: until < from ? from : until }] },
+});
+export const removePlannedPause = (d: AppData, id: string): AppData => ({
+  ...d,
+  settings: { ...d.settings, plannedPauses: d.settings.plannedPauses.filter((p) => p.id !== id) },
+});
+
+const withDay = (d: AppData, date: string, rid: string, fn: (day: RoutineDay) => RoutineDay): AppData => {
+  const day = d.routineLog[date]?.[rid] ?? { done: [], skipped: [] };
+  return { ...d, routineLog: { ...d.routineLog, [date]: { ...d.routineLog[date], [rid]: fn(day) } } };
+};
+export const startRoutine = (d: AppData, date: string, rid: string, whenISO: string): AppData =>
+  withDay(d, date, rid, (day) => {
+    const { end: _e, ...rest } = day;
+    void _e;
+    return { ...rest, start: whenISO };
+  });
+export const finishRoutine = (d: AppData, date: string, rid: string, whenISO: string): AppData =>
+  d.routineLog[date]?.[rid]?.start ? withDay(d, date, rid, (day) => ({ ...day, end: whenISO })) : d;
+
+/* ---------- places and modes (Home, Mom's, Vacation, Road trip, …) ---------- */
+
+export const setRoutinePlaces = (d: AppData, id: string, places: string[]): AppData => ({
+  ...d,
+  routines: d.routines.map((r) => {
+    if (r.id !== id) return r;
+    const { places: _p, ...rest } = r;
+    void _p;
+    return places.length === 0 || places.length === d.settings.places.length ? rest : { ...rest, places };
+  }),
+});
+
+/** make a copy of a routine just for one place; the original steps aside from that place so nothing doubles up */
+export const copyToPlace = (d: AppData, id: string, placeId: string): AppData => {
+  const r = d.routines.find((x) => x.id === id);
+  const place = d.settings.places.find((p) => p.id === placeId);
+  if (!r || !place) return d;
+  const allIds = d.settings.places.map((p) => p.id);
+  const copy: Routine = { ...r, id: newId(), name: `${r.name} (${place.label})`, places: [placeId], steps: r.steps.map((st) => ({ ...st, id: newId() })) };
+  const remaining = (r.places && r.places.length > 0 ? r.places : allIds).filter((x) => x !== placeId);
+  const at = d.routines.indexOf(r);
+  const updated: Routine = remaining.length === 0 ? r : { ...r, places: remaining };
+  return { ...d, routines: [...d.routines.slice(0, at), updated, copy, ...d.routines.slice(at + 1)] };
+};
+
+export const addPlace = (d: AppData, label: string, icon: string): AppData => ({
+  ...d,
+  settings: { ...d.settings, places: [...d.settings.places, { id: newId(), label, icon }] },
+});
+export const renamePlace = (d: AppData, id: string, label: string, icon: string): AppData => ({
+  ...d,
+  settings: { ...d.settings, places: d.settings.places.map((p) => (p.id === id ? { ...p, label, icon } : p)) },
+});
+export const deletePlace = (d: AppData, id: string): AppData => {
+  if (d.settings.places.length <= 1) return d;
+  const places = d.settings.places.filter((p) => p.id !== id);
+  const strip = (xs?: string[]) => {
+    const rest = xs?.filter((x) => x !== id);
+    return rest && rest.length > 0 ? rest : undefined;
+  };
+  return {
+    ...d,
+    routines: d.routines.map((r) => {
+      const { places: _p, ...rest } = r;
+      void _p;
+      const np = strip(r.places);
+      return {
+        ...rest,
+        ...(np ? { places: np } : {}),
+        steps: r.steps.map((st) => {
+          const { places: _sp, ...srest } = st;
+          void _sp;
+          const sp = strip(st.places);
+          return sp ? { ...srest, places: sp } : srest;
+        }),
+      };
+    }),
+    settings: { ...d.settings, places, place: d.settings.place === id ? places[0].id : d.settings.place, stays: d.settings.stays.filter((s) => s.place !== id) },
+  };
+};
+export const addStay = (d: AppData, place: string, from: string, until: string): AppData => ({
+  ...d,
+  settings: { ...d.settings, stays: [...d.settings.stays, { id: newId(), place, from, until: until < from ? from : until }] },
+});
+export const removeStay = (d: AppData, id: string): AppData => ({ ...d, settings: { ...d.settings, stays: d.settings.stays.filter((s) => s.id !== id) } });

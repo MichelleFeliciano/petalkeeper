@@ -116,3 +116,11 @@ The app must be hosted at a web address so your phone can open it. Hosting is fr
 - **History** shows the last four weeks per routine with no streaks or scores; the week review includes routine and mood notes.
 - **Calendar nudges:** give a routine a nudge time, then export `.ics` from the Garden Shed so your phone's calendar can remind you even when the app is closed.
 - **This device:** text size, an optional casual PIN lock, and a welcome tour; these never sync.
+
+## v1.4
+
+- **Places & modes** (Home, Mom's, Vacation, Road trip, plus your own): switch where you are on Today and routines and steps tied to other places step aside. Plan stays ahead of time; copy a routine for a place from Daily Rituals → Edit.
+- **Sync:** restore an earlier saved version of your cloud copy, and optionally encrypt the cloud copy with a passphrase (AES-GCM; a forgotten passphrase can't be recovered).
+- **As needed** items ("last done 8:10 am"), **countdowns**, **planned rests**, optional routine **timing**, step **notes and links**.
+- **Garden Journal:** month calendar of moods and notes, search, and a soft weekday observation once there's enough history.
+- **Share to Petalkeeper** (Android, installed app) adds shared text to the Seed Pouch; optional **weekly backup download**.

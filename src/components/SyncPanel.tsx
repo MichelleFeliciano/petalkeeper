@@ -1,6 +1,95 @@
 import { useState } from 'react';
 import { useSync } from '../sync';
 import { Modal } from './Modal';
+import type { Version } from '../lib/sync';
+import type { AppData } from '../lib/types';
+
+const when = (iso: string) => (iso ? new Date(iso).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'unknown time');
+
+/** Encryption and going back to an earlier saved version. */
+function PrivacyAndHistory({ run, busy, err }: { run: (fn: () => Promise<unknown>) => Promise<void>; busy: boolean; err: string }) {
+  const sync = useSync();
+  const [pass, setPass] = useState('');
+  const [again, setAgain] = useState('');
+  const [list, setList] = useState<Version[] | null>(null);
+  const [pick, setPick] = useState<{ v: Version; data: AppData } | null>(null);
+  const encrypted = !!sync.config?.passphrase;
+  return (
+    <details className="sync-more">
+      <summary>Privacy &amp; earlier versions</summary>
+      <h3>Encryption {encrypted ? '(on)' : '(off)'}</h3>
+      {encrypted ? (
+        <>
+          <p className="hint">Your cloud copy is scrambled with your passphrase, so even someone who could open the repository would only see gibberish. Other devices need the same passphrase when they connect.</p>
+          <button className="btn" disabled={busy} onClick={() => void run(() => sync.setPassphrase(null))}>Turn encryption off</button>
+          <p className="hint">Turn it off on every device, or a device that still has the passphrase will turn it back on.</p>
+        </>
+      ) : (
+        <>
+          <p className="hint">Optional. Scrambles the cloud copy with a passphrase only you know. <strong>If you forget it, the cloud copy can't be recovered</strong>, though the data on your devices stays safe.</p>
+          <label>
+            Passphrase
+            <input type="password" autoComplete="off" value={pass} onChange={(e) => setPass(e.target.value)} />
+          </label>
+          <label>
+            Type it again
+            <input type="password" autoComplete="off" value={again} onChange={(e) => setAgain(e.target.value)} />
+          </label>
+          <button
+            className="btn"
+            disabled={busy || pass.length < 6 || pass !== again}
+            onClick={() =>
+              void run(async () => {
+                await sync.setPassphrase(pass);
+                setPass('');
+                setAgain('');
+              })
+            }
+          >
+            Encrypt my cloud copy
+          </button>
+          {pass.length > 0 && pass.length < 6 && <p className="hint">Use at least 6 characters.</p>}
+          {pass.length >= 6 && again && pass !== again && <p className="hint">The two don't match yet.</p>}
+        </>
+      )}
+      <h3>Earlier versions</h3>
+      <p className="hint">Every sync is saved. If something was deleted by mistake, you can go back to how things were.</p>
+      <button className="btn" disabled={busy} onClick={() => void run(async () => setList(await sync.versions()))}>Show earlier versions</button>
+      {err && <p className="error" role="alert">{err}</p>}
+      {list && (
+        <Modal title="Go back to an earlier version" onClose={() => { setList(null); setPick(null); }}>
+          {!pick ? (
+            <>
+              {list.length === 0 && <p>No earlier versions yet.</p>}
+              <ul className="versions">
+                {list.map((v) => (
+                  <li key={v.sha}>
+                    <button className="btn" disabled={busy} onClick={() => void run(async () => setPick({ v, data: await sync.peekVersion(v.sha) }))}>
+                      {when(v.date)}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <>
+              <p>
+                The version from <strong>{when(pick.v.date)}</strong> has {pick.data.tasks.length} activit{pick.data.tasks.length === 1 ? 'y' : 'ies'} and {pick.data.routines.length} routine{pick.data.routines.length === 1 ? '' : 's'}.
+              </p>
+              <p className="hint">Restoring replaces what's on this device and in the cloud. Your other devices will follow on their next sync. Consider exporting a backup first.</p>
+              <div className="actions">
+                <button className="btn" onClick={() => setPick(null)}>Back</button>
+                <button className="btn primary" disabled={busy} onClick={() => void run(async () => { await sync.restore(pick.v.sha); setPick(null); setList(null); })}>
+                  Restore this version
+                </button>
+              </div>
+            </>
+          )}
+        </Modal>
+      )}
+    </details>
+  );
+}
 
 const errText = (e: unknown) => (e instanceof Error ? e.message : 'Something went wrong.');
 
@@ -8,6 +97,7 @@ export function SyncPanel() {
   const sync = useSync();
   const [repo, setRepo] = useState('');
   const [token, setToken] = useState('');
+  const [passphrase, setPassphrase] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
 
@@ -49,6 +139,7 @@ export function SyncPanel() {
               Disconnect this device
             </button>
           </div>
+          <PrivacyAndHistory run={run} busy={busy} err={err} />
           <p className="hint">
             Disconnecting keeps everything on this device and forgets the access token. Edits from different devices are combined; if the same item was changed on two devices at once, this device's version is kept.
           </p>
@@ -72,8 +163,11 @@ export function SyncPanel() {
             onSubmit={(e) => {
               e.preventDefault();
               void run(async () => {
-                const r = await sync.connect(repo, token);
-                if (r === 'connected') setToken('');
+                const r = await sync.connect(repo, token, passphrase);
+                if (r === 'connected') {
+                  setToken('');
+                  setPassphrase('');
+                }
               });
             }}
           >
@@ -84,6 +178,10 @@ export function SyncPanel() {
             <label>
               Access token
               <input type="password" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" />
+            </label>
+            <label>
+              Passphrase (only if your cloud copy is encrypted)
+              <input type="password" autoComplete="off" value={passphrase} onChange={(e) => setPassphrase(e.target.value)} />
             </label>
             {err && (
               <p className="error" role="alert">

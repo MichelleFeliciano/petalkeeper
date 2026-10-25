@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { applyTextSize, getTextSize, hasPin, setPin, setTextSize, validPin, checkPin, type TextSize } from '../lib/device';
+import { applyTextSize, autoBackupOn, getTextSize, hasPin, setAutoBackup, setPin, setTextSize, validPin, checkPin, type TextSize } from '../lib/device';
 
 /** Settings that belong to this device only (they don't sync). */
 export function DevicePanel() {
   const [size, setSize] = useState<TextSize>(getTextSize);
   const [pinOn, setPinOn] = useState(hasPin);
+  const [auto, setAuto] = useState(autoBackupOn);
   const [pin, setPinInput] = useState('');
   const [current, setCurrent] = useState('');
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -46,6 +47,18 @@ export function DevicePanel() {
           <option value="xlarge">Extra large</option>
         </select>
       </label>
+      <label className="inline">
+        <input
+          type="checkbox"
+          checked={auto}
+          onChange={(e) => {
+            setAuto(e.target.checked);
+            setAutoBackup(e.target.checked);
+          }}
+        />{' '}
+        Save a backup file automatically about once a week
+      </label>
+      <p className="hint">A browser can't write to a folder quietly, so this downloads a backup file when you open the app and a week has passed. It works best on a computer. Phones may ask where to save it.</p>
       <fieldset className="pin">
         <legend>Private PIN {pinOn ? '(on)' : '(off)'}</legend>
         {pinOn && (

@@ -1,6 +1,6 @@
 import { isISODate, isTime } from './dates';
 import { sampleData } from './seed';
-import { DEFAULT_SETTINGS, PARTS, type AppData, type CategoryDef, type Counter, type Mood, type Settings, type Task, type Template } from './types';
+import { DEFAULT_SETTINGS, PARTS, type AppData, type CategoryDef, type Counter, type Countdown, type Mood, type Needed, type Place, type PlannedPause, type Stay, type Settings, type Task, type Template } from './types';
 
 export const STORAGE_KEY = 'petalkeeper.v1';
 
@@ -44,8 +44,9 @@ export function validateData(raw: unknown): ValidateResult {
       !isObj(r) || !isStr(r.id) || !isStr(r.name) || !PARTS.some((p) => p.id === r.kind) ||
       (r.days !== undefined && !(Array.isArray(r.days) && r.days.every((x) => Number.isInteger(x) && x >= 0 && x <= 6))) ||
       (r.remindAt !== undefined && !isTime(r.remindAt)) ||
+      (r.places !== undefined && !(Array.isArray(r.places) && r.places.every(isStr))) ||
       !Array.isArray(r.steps) ||
-      !r.steps.every((s) => isObj(s) && isStr(s.id) && isStr(s.title) && (s.days === undefined || (Array.isArray(s.days) && s.days.every((x) => Number.isInteger(x) && x >= 0 && x <= 6))))
+      !r.steps.every((s) => isObj(s) && isStr(s.id) && isStr(s.title) && (s.days === undefined || (Array.isArray(s.days) && s.days.every((x) => Number.isInteger(x) && x >= 0 && x <= 6))) && (s.note === undefined || isStr(s.note)) && (s.places === undefined || (Array.isArray(s.places) && s.places.every(isStr))))
     ) {
       return { ok: false, error: 'Some routines in the file are malformed.' };
     }
@@ -74,6 +75,38 @@ export function validateData(raw: unknown): ValidateResult {
   if (isISODate(s.pausedFrom)) settings.pausedFrom = s.pausedFrom;
   if (isISODate(s.pausedUntil)) settings.pausedUntil = s.pausedUntil;
   if (isISODate(s.gentleOn)) settings.gentleOn = s.gentleOn;
+  if (Array.isArray(s.plannedPauses)) {
+    settings.plannedPauses = (s.plannedPauses as unknown[]).filter(
+      (p): p is PlannedPause => isObj(p) && isStr(p.id) && isISODate(p.from) && isISODate(p.until),
+    );
+  }
+  if (Array.isArray(s.places)) {
+    const ps = (s.places as unknown[]).filter((p): p is Place => isObj(p) && isStr(p.id) && isStr(p.label) && isStr(p.icon));
+    if (ps.length > 0) settings.places = ps;
+  }
+  if (isStr(s.place) && settings.places.some((p) => p.id === s.place)) settings.place = s.place;
+  else settings.place = settings.places[0].id;
+  if (Array.isArray(s.stays)) {
+    settings.stays = (s.stays as unknown[]).filter((p): p is Stay => isObj(p) && isStr(p.id) && isStr(p.place) && isISODate(p.from) && isISODate(p.until));
+  }
+  let needed: Needed[] = [];
+  if (raw.needed !== undefined) {
+    if (!Array.isArray(raw.needed) || !raw.needed.every((n) => isObj(n) && isStr(n.id) && isStr(n.label) && isStr(n.icon))) {
+      return { ok: false, error: 'As-needed items in the file are malformed.' };
+    }
+    needed = raw.needed as Needed[];
+  }
+  const neededLog: AppData['neededLog'] = {};
+  if (isObj(raw.neededLog)) {
+    for (const [id, v] of Object.entries(raw.neededLog)) if (Array.isArray(v)) neededLog[id] = v.filter(isStr).slice(-50);
+  }
+  let countdowns: Countdown[] = [];
+  if (raw.countdowns !== undefined) {
+    if (!Array.isArray(raw.countdowns) || !raw.countdowns.every((c) => isObj(c) && isStr(c.id) && isStr(c.label) && isStr(c.icon) && isISODate(c.date))) {
+      return { ok: false, error: 'Countdowns in the file are malformed.' };
+    }
+    countdowns = raw.countdowns as Countdown[];
+  }
   let counters: Counter[] = [];
   if (raw.counters !== undefined) {
     if (!Array.isArray(raw.counters) || !raw.counters.every((c) => isObj(c) && isStr(c.id) && isStr(c.label) && isStr(c.icon) && typeof c.goal === 'number' && c.goal > 0)) {
@@ -115,6 +148,9 @@ export function validateData(raw: unknown): ValidateResult {
     ok: true,
     data: {
       templates,
+      needed,
+      neededLog,
+      countdowns,
       counters,
       counterLog,
       checkins,

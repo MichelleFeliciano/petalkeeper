@@ -4,6 +4,8 @@ import {
   SyncError,
   forCloud,
   getRemote,
+  getVersion,
+  listVersions,
   loadBase,
   loadSyncConfig,
   pushReplace,
@@ -14,6 +16,7 @@ import {
   stable,
   testConnection,
   type SyncConfig,
+  type Version,
 } from './lib/sync';
 import type { AppData } from './lib/types';
 
@@ -32,7 +35,13 @@ export interface SyncApi {
   lastSync: string | null;
   /** set when the cloud already holds data and the user must choose what to do */
   pending: { cloudTasks: number; deviceTasks: number } | null;
-  connect: (repo: string, token: string) => Promise<'connected' | 'choose'>;
+  connect: (repo: string, token: string, passphrase?: string) => Promise<'connected' | 'choose'>;
+  versions: () => Promise<Version[]>;
+  /** preview what an earlier version holds */
+  peekVersion: (sha: string) => Promise<AppData>;
+  restore: (sha: string) => Promise<void>;
+  /** turn encryption of the cloud copy on (a passphrase) or off (null) */
+  setPassphrase: (p: string | null) => Promise<void>;
   choose: (c: ConnectChoice) => Promise<void>;
   cancelConnect: () => void;
   syncNow: () => Promise<void>;
@@ -123,8 +132,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     error,
     lastSync,
     pending: pending ? { cloudTasks: pending.remote.tasks.length, deviceTasks: dataRef.current.tasks.length } : null,
-    connect: async (repo, token) => {
-      const cfg: SyncConfig = { repo: repo.trim(), token: token.trim(), path: 'petalkeeper.json', auto: true };
+    connect: async (repo, token, passphrase) => {
+      const cfg: SyncConfig = { repo: repo.trim(), token: token.trim(), path: 'petalkeeper.json', auto: true, ...(passphrase?.trim() ? { passphrase: passphrase.trim() } : {}) };
       await testConnection(cfg);
       const remote = await getRemote(cfg);
       if (!remote.data) {
@@ -153,6 +162,41 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       }
     },
     cancelConnect: () => setPending(null),
+    versions: async () => {
+      if (!config) return [];
+      return listVersions(config);
+    },
+    peekVersion: async (sha) => {
+      if (!config) throw new SyncError('invalid', 'Sync is not connected.');
+      return getVersion(config, sha);
+    },
+    restore: async (sha) => {
+      if (!config) return;
+      const old = await getVersion(config, sha);
+      const next = { ...old, settings: { ...old.settings, notifications: dataRef.current.settings.notifications } };
+      await pushReplace(config, next);
+      replaceAll(next);
+      baseRef.current = next;
+      saveBase(next);
+      setLastSync(new Date().toISOString());
+      setStatus('ok');
+    },
+    setPassphrase: async (p) => {
+      if (!config) return;
+      // bring in anything other devices added first, so nothing is lost by re-saving the cloud copy
+      const { merged } = await runSync(config, dataRef.current, baseRef.current);
+      const { passphrase: _old, ...rest } = config;
+      void _old;
+      const next: SyncConfig = p ? { ...rest, passphrase: p } : rest;
+      await pushReplace(next, merged);
+      saveSyncConfig(next);
+      setConfig(next);
+      replaceAll(merged);
+      baseRef.current = merged;
+      saveBase(merged);
+      setLastSync(new Date().toISOString());
+      setStatus('ok');
+    },
     syncNow,
     disconnect: () => {
       saveSyncConfig(null);

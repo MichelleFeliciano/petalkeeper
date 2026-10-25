@@ -7,6 +7,7 @@ import { buildICS, downloadText } from '../lib/ics';
 import { newId } from '../lib/schedule';
 import { SyncPanel } from '../components/SyncPanel';
 import { DevicePanel } from '../components/DevicePanel';
+import { PlacesPanel } from '../components/PlacesPanel';
 import { buildRoutineICS } from '../lib/routines';
 import { useSync } from '../sync';
 
@@ -182,6 +183,8 @@ export function Shed() {
         </form>
         <p className="hint">Tasks in a removed category keep working and show as "Other".</p>
       </section>
+
+      <PlacesPanel />
 
       <SyncPanel />
 

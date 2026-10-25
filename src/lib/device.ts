@@ -66,3 +66,19 @@ export function checkPin(pin: string): boolean {
   }
 }
 export const validPin = (pin: string) => /^\d{4,8}$/.test(pin);
+
+/* weekly backup file (opt in, per device) */
+const AB_KEY = 'petalkeeper.autobackup';
+/** stored value: "off", or the ISO date of the last automatic backup ("on" before the first one) */
+export const autoBackupOn = () => {
+  const v = read(AB_KEY);
+  return v !== null && v !== 'off';
+};
+export const setAutoBackup = (on: boolean) => write(AB_KEY, on ? 'on' : null);
+export function autoBackupDue(today: string): boolean {
+  const v = read(AB_KEY);
+  if (v === null || v === 'off') return false;
+  if (v === 'on') return true;
+  return (new Date(today).getTime() - new Date(v).getTime()) / 86_400_000 >= 7;
+}
+export const markAutoBackup = (today: string) => write(AB_KEY, today);

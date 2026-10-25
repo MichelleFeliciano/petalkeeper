@@ -73,5 +73,8 @@ export function sampleData(): AppData {
     counters: [],
     counterLog: {},
     checkins: {},
+    needed: [],
+    neededLog: {},
+    countdowns: [],
   };
 }

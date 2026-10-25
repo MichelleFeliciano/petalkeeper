@@ -225,3 +225,20 @@ html[data-text='xlarge'] body { font-size: 22px; }
 @media (max-width: 760px) {
   .sync-chip { position: fixed; top: 6px; right: 6px; margin: 0; padding: 4px 10px; z-index: 40; background: var(--cream, #fff7e9); color: var(--ink, #2a3524); opacity: 0.95; }
 }
+
+/* journal, places, notes */
+.cal { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; margin-top: 10px; }
+.cal-h { text-align: center; font-size: 0.8rem; color: var(--ink-soft); }
+.cal-day { min-height: 52px; border-radius: 10px; border: 1px solid var(--sage, #a8b99a); background: transparent; display: grid; place-items: center; align-content: center; cursor: pointer; color: inherit; font: inherit; padding: 2px; }
+.cal-day .n { font-size: 0.8rem; opacity: 0.8; }
+.cal-day.out { opacity: 0.4; }
+.cal-day.today { border-width: 2px; border-color: var(--moss, #687b5d); }
+.cal-day.sel { background: var(--petal, #e8b8c4); color: #3a2630; }
+.row.between { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.place-switch { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin: 6px 0; }
+.step-note { display: inline-block; font-size: 0.9rem; opacity: 0.9; }
+.step-note a { color: inherit; text-decoration: underline; }
+.timing { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin: 4px 0; }
+ul.plain { list-style: none; padding: 0; margin: 6px 0; display: grid; gap: 6px; }
+.versions { list-style: none; padding: 0; display: grid; gap: 8px; }
+.sync-more { margin-top: 10px; }

@@ -11,4 +11,7 @@ export const emptyForTest = (): AppData => ({
   counters: [],
   counterLog: {},
   checkins: {},
+  needed: [],
+  neededLog: {},
+  countdowns: [],
 });

@@ -109,7 +109,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       replaceAll: (d: AppData) => setData(d),
       resetSample: () => setData({ ...sampleData(), settings: data.settings }),
       resetEverything: () =>
-        setData({ version: 1, tasks: [], routines: [], routineLog: {}, settings: { ...DEFAULT_SETTINGS }, blooms: 0, templates: [], counters: [], counterLog: {}, checkins: {} }),
+        setData({ version: 1, tasks: [], routines: [], routineLog: {}, settings: { ...DEFAULT_SETTINGS }, blooms: 0, templates: [], counters: [], counterLog: {}, checkins: {}, needed: [], neededLog: {}, countdowns: [] }),
       notify: (text: string) => setToast({ id: ++toastId, text, undoable: false }),
       undo: () => {
         if (snap.current) setData(snap.current);

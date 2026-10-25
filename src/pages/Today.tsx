@@ -6,7 +6,8 @@ import { AdjustDay } from '../components/AdjustDay';
 import { TimeBlocks } from '../components/TimeBlocks';
 import { TemplatesModal } from '../components/TemplatesModal';
 import { Fairy, GardenStrip, type Pose } from '../components/Fairy';
-import { DoNow, TodaysRoutines, Counters, CheckIn } from '../components/DailyExtras';
+import { AsNeeded, Countdowns, DoNow, TodaysRoutines, Counters, CheckIn } from '../components/DailyExtras';
+import { PlaceSwitcher } from '../components/Controls';
 import { findConflicts, isDone, itemsOn } from '../lib/schedule';
 import { addDays, fmtDuration, fmtLong, fmtTime, fromISO, nowMinutes, toMinutes } from '../lib/dates';
 import type { Priority } from '../lib/types';
@@ -105,9 +106,15 @@ export function Today() {
         {settings.showFairy && <Fairy pose={pose} />}
       </header>
 
+      <PlaceSwitcher />
+
+      <Countdowns />
+
       <DoNow />
 
       <TodaysRoutines />
+
+      <AsNeeded />
 
       <Counters />
 

@@ -4,7 +4,10 @@ import { Modal } from '../components/Modal';
 import { routineDay } from '../lib/ops';
 import { newId, routineDaysLabel, routineOn } from '../lib/schedule';
 import { addDays, fmtDuration } from '../lib/dates';
-import { historyFor, isGentle, isPaused, progressOf, recentTended, STARTERS, stepsFor } from '../lib/routines';
+import { atPlace, historyFor, isGentle, isPaused, placeLabel, placeOn, progressOf, recentTended, STARTERS, stepsFor } from '../lib/routines';
+import { linkify, typicalMinutes } from '../lib/journal';
+import { PlaceSwitcher, RestControls } from '../components/Controls';
+import type { Place } from '../lib/types';
 import { PARTS, currentPart, partOf, type PartOfDay, type Routine } from '../lib/types';
 
 const DAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -39,11 +42,43 @@ function DayChips({ days, onChange, weekStart, label, suffix = '' }: { days?: nu
   );
 }
 
+function PlaceChips({ places, value, onChange, label, suffix = '' }: { places: Place[]; value?: string[]; onChange: (v: string[]) => void; label: string; suffix?: string }) {
+  return (
+    <fieldset className="day-chips">
+      <legend>{label}</legend>
+      {places.map((p) => {
+        const on = value?.includes(p.id) ?? false;
+        return (
+          <label key={p.id} className={'chip' + (on ? ' on' : '')}>
+            <input type="checkbox" aria-label={p.label + suffix} checked={on} onChange={() => onChange(on ? (value ?? []).filter((x) => x !== p.id) : [...(value ?? []), p.id])} />
+            {p.icon} {p.label}
+          </label>
+        );
+      })}
+    </fieldset>
+  );
+}
+
+/** note text with links and phone numbers made tappable; nothing is ever rendered as HTML */
+export function Note({ text }: { text: string }) {
+  return (
+    <span className="step-note">
+      {linkify(text).map((p, i) =>
+        p.href ? (
+          <a key={i} href={p.href} target={p.href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer">{p.text}</a>
+        ) : (
+          <span key={i}>{p.text}</span>
+        ),
+      )}
+    </span>
+  );
+}
+
 function Guided({ routine, onClose }: { routine: Routine; onClose: () => void }) {
   const s = useStore();
   const { data, today } = s;
   const day = routineDay(data, today, routine.id);
-  const remaining = stepsFor(routine, today, isGentle(data.settings, today)).filter((st) => !day.done.includes(st.id) && !day.skipped.includes(st.id));
+  const remaining = stepsFor(routine, today, isGentle(data.settings, today), placeOn(data.settings, today)).filter((st) => !day.done.includes(st.id) && !day.skipped.includes(st.id));
   const [offset, setOffset] = useState(0);
   const cur = remaining.length ? remaining[offset % remaining.length] : undefined;
   const [left, setLeft] = useState<number | null>(null);
@@ -122,7 +157,10 @@ function RoutineCard({ routine, first, last }: { routine: Routine; first: boolea
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [newStep, setNewStep] = useState('');
   const [mins, setMins] = useState('');
-  const todays = stepsFor(routine, today, gentle);
+  const place = placeOn(data.settings, today);
+  const here = atPlace(routine, place);
+  const todays = stepsFor(routine, today, gentle, place);
+  const typical = typicalMinutes(data, routine.id);
   const shown = editing ? routine.steps : todays;
   const hidden = routine.steps.length - todays.length;
   const total = routine.steps.reduce((n, st) => n + (st.minutes ?? 0), 0);
@@ -157,7 +195,9 @@ function RoutineCard({ routine, first, last }: { routine: Routine; first: boolea
           <h2>{routine.name}</h2>
         )}
         {routine.days && routine.days.length > 0 && <span className="badge">{routineDaysLabel(routine.days)}</span>}
+        {routine.places && routine.places.length > 0 && <span className="badge">{routine.places.map((id) => placeLabel(data.settings, id)?.label ?? '').filter(Boolean).join(', ')}</span>}
         {!routineOn(routine, today) && <span className="meta">Not on today's list</span>}
+        {routineOn(routine, today) && !here && <span className="meta">Not for {placeLabel(data.settings, place)?.label ?? 'here'}</span>}
         <span className="meta">
           {pr.done}/{pr.total} done{total > 0 ? ` · about ${fmtDuration(total)}` : ''}
         </span>
@@ -167,6 +207,21 @@ function RoutineCard({ routine, first, last }: { routine: Routine; first: boolea
           {editing ? 'Done editing' : 'Edit'}
         </button>
       </div>
+      {!editing && (
+        <p className="timing meta">
+          {!day.start && (
+            <button className="btn ghost small" onClick={() => s.startRoutine(today, routine.id, new Date().toISOString())}>▶ Start</button>
+          )}
+          {day.start && !day.end && (
+            <>
+              Started {new Date(day.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}{' '}
+              <button className="btn small" onClick={() => s.finishRoutine(today, routine.id, new Date().toISOString())}>Finished</button>
+            </>
+          )}
+          {day.start && day.end && <>Took about {Math.max(1, Math.round((new Date(day.end).getTime() - new Date(day.start).getTime()) / 60000))} min today. </>}
+          {typical && <>Usually about {typical.minutes} min (last {typical.samples} times). Just for your curiosity.</>}
+        </p>
+      )}
       {gentle && hidden > 0 && !editing && <p className="hint">Gentle day: {hidden} step{hidden === 1 ? ' is' : 's are'} resting today.</p>}
       <ol className="ritual-steps">
         {shown.map((st, i) => {
@@ -203,6 +258,7 @@ function RoutineCard({ routine, first, last }: { routine: Routine; first: boolea
                   {st.days && st.days.length > 0 && <small> · {routineDaysLabel(st.days)}</small>}
                   {isSkipped && <small> · skipped for today</small>}
                   {isDone && <small> ✓</small>}
+                  {st.note && !editing && <><br /><Note text={st.note} /></>}
                 </span>
               </label>
               {editing ? (
@@ -224,6 +280,16 @@ function RoutineCard({ routine, first, last }: { routine: Routine; first: boolea
               )}
               {editing && (
                 <details className="step-days">
+                  <summary>Note and places for “{st.title}”</summary>
+                  <label>
+                    Note (a link, address or phone number is fine)
+                    <input aria-label={`Note for ${st.title}`} value={st.note ?? ''} onChange={(e) => patchStep(st.id, { note: e.target.value || undefined })} />
+                  </label>
+                  <PlaceChips suffix={` for ${st.title}`} places={data.settings.places} value={st.places} label="Only in these places (none = wherever the routine runs)" onChange={(v) => patchStep(st.id, { places: v.length ? v : undefined })} />
+                </details>
+              )}
+              {editing && (
+                <details className="step-days">
                   <summary>Days for “{st.title}”: {routineDaysLabel(st.days)}</summary>
                   <DayChips suffix={` for ${st.title}`} days={st.days} weekStart={weekStart} label="Only on these days (none = whenever the routine runs)" onChange={(d) => patchStep(st.id, { days: d.length ? d : undefined })} />
                 </details>
@@ -242,6 +308,14 @@ function RoutineCard({ routine, first, last }: { routine: Routine; first: boolea
           </div>
           <p className="hint">★ keeps a step on gentle days. “optional” steps never stop a routine from counting as done.</p>
           <DayChips days={routine.days} weekStart={weekStart} label="Which days is this routine for? (none picked = every day)" onChange={(d) => s.setRoutineDays(routine.id, d)} />
+          <PlaceChips places={data.settings.places} value={routine.places} label="Which places is this routine for? (none picked = everywhere)" onChange={(v) => s.setRoutinePlaces(routine.id, v)} />
+          <div className="actions left">
+            {data.settings.places.map((p) => (
+              <button key={p.id} className="btn small" onClick={() => s.copyToPlace(routine.id, p.id)} aria-label={`Make a copy of ${routine.name} just for ${p.label}`}>
+                Copy for {p.icon} {p.label}
+              </button>
+            ))}
+          </div>
           <label className="inline">
             Part of the day{' '}
             <select value={routine.kind} onChange={(e) => s.setRoutineKind(routine.id, e.target.value as PartOfDay)}>
@@ -277,49 +351,6 @@ function RoutineCard({ routine, first, last }: { routine: Routine; first: boolea
   );
 }
 
-/** Pause and gentle-day controls, shared by Today and Rituals */
-export function RestControls() {
-  const { data, today, updateSettings } = useStore();
-  const { settings } = data;
-  const paused = isPaused(settings, today);
-  const gentle = isGentle(settings, today);
-  const rest = (days: number | 'open') =>
-    updateSettings({ pausedFrom: today, pausedUntil: days === 'open' ? '9999-12-31' : addDays(today, days - 1) });
-  return (
-    <div className="rest card" role="group" aria-label="Rest options">
-      {paused ? (
-        <p>
-          🌙 Routines are resting{settings.pausedUntil && settings.pausedUntil < '9999' ? ` through ${settings.pausedUntil}` : ' until you resume'}. Nothing is missed.{' '}
-          <button className="btn small" onClick={() => updateSettings({ pausedFrom: undefined, pausedUntil: undefined })}>Resume routines</button>
-        </p>
-      ) : (
-        <div className="row">
-          <label className="inline">
-            <input type="checkbox" checked={gentle} onChange={(e) => updateSettings({ gentleOn: e.target.checked ? today : undefined })} /> Gentle day (essentials only)
-          </label>
-          <label className="inline">
-            Pause routines{' '}
-            <select
-              aria-label="Pause routines"
-              value=""
-              onChange={(e) => {
-                const v = e.target.value;
-                if (v) rest(v === 'open' ? 'open' : Number(v));
-              }}
-            >
-              <option value="">…</option>
-              <option value="1">Just today</option>
-              <option value="3">3 days</option>
-              <option value="7">A week</option>
-              <option value="open">Until I resume</option>
-            </select>
-          </label>
-        </div>
-      )}
-    </div>
-  );
-}
-
 export function Rituals() {
   const { data, addRoutine, addStarter, today } = useStore();
   // open on the current part of the day, or the next one that has a routine in it
@@ -350,6 +381,7 @@ export function Rituals() {
           ))}
         </div>
       </header>
+      <PlaceSwitcher />
       <RestControls />
       {paused && <p className="hint">Routines are paused, so they're hidden on Today. You can still edit them here.</p>}
       {list.map((r, i) => <RoutineCard key={r.id} routine={r} first={i === 0} last={i === list.length - 1} />)}

@@ -14,9 +14,11 @@ export interface SyncConfig {
   token: string;
   path: string;
   auto: boolean;
+  /** if set, the cloud copy is encrypted with this passphrase (kept only in this browser) */
+  passphrase?: string;
 }
 
-export type SyncErrorKind = 'auth' | 'notfound' | 'conflict' | 'network' | 'invalid' | 'other';
+export type SyncErrorKind = 'auth' | 'notfound' | 'conflict' | 'network' | 'invalid' | 'locked' | 'other';
 export class SyncError extends Error {
   constructor(public kind: SyncErrorKind, message: string) {
     super(message);
@@ -131,7 +133,12 @@ export function mergeData(base: AppData | null, local: AppData, remote: AppData)
   const templates = mergeMaps(base ? byId(base.templates) : new Map(), byId(local.templates), byId(remote.templates));
   const log = mergeMaps(flattenLog(base), flattenLog(local), flattenLog(remote), (l, r) => {
     const done = [...new Set([...l.done, ...r.done])];
-    return { done, skipped: [...new Set([...l.skipped, ...r.skipped])].filter((s) => !done.includes(s)) };
+    return {
+      done,
+      skipped: [...new Set([...l.skipped, ...r.skipped])].filter((s) => !done.includes(s)),
+      ...(l.start ?? r.start ? { start: l.start ?? r.start } : {}),
+      ...(l.end ?? r.end ? { end: l.end ?? r.end } : {}),
+    };
   });
   const routineLog: AppData['routineLog'] = {};
   for (const [k, day] of log) {
@@ -151,6 +158,13 @@ export function mergeData(base: AppData | null, local: AppData, remote: AppData)
     (counterLog[date] ??= {})[id] = n;
   }
   const checks = mergeMaps(new Map(Object.entries(base?.checkins ?? {})), new Map(Object.entries(local.checkins)), new Map(Object.entries(remote.checkins)));
+  const needed = mergeMaps(base ? byId(base.needed) : new Map(), byId(local.needed), byId(remote.needed));
+  const countdowns = mergeMaps(base ? byId(base.countdowns) : new Map(), byId(local.countdowns), byId(remote.countdowns));
+  const neededLog = Object.fromEntries(
+    mergeMaps(new Map(Object.entries(base?.neededLog ?? {})), new Map(Object.entries(local.neededLog)), new Map(Object.entries(remote.neededLog)), (l, r) =>
+      [...new Set([...l, ...r])].sort().slice(-50),
+    ),
+  );
   const keys = [...settingsMap(local).keys()];
   const sm = mergeMaps(settingsMap(base), settingsMap(local), settingsMap(remote));
   const settings = { ...local.settings } as unknown as Record<string, unknown>;
@@ -161,6 +175,9 @@ export function mergeData(base: AppData | null, local: AppData, remote: AppData)
     tasks: [...tasks.values()],
     routines: [...routines.values()],
     templates: [...templates.values()],
+    needed: [...needed.values()],
+    neededLog,
+    countdowns: [...countdowns.values()],
     counters: [...counters.values()],
     counterLog,
     checkins: Object.fromEntries(checks),
@@ -169,6 +186,60 @@ export function mergeData(base: AppData | null, local: AppData, remote: AppData)
     blooms: Math.max(local.blooms, remote.blooms),
   };
 }
+
+/* ---------- optional end-to-end encryption (AES-GCM, key from a passphrase) ---------- */
+
+const b64 = (bytes: Uint8Array) => {
+  let s = '';
+  bytes.forEach((b) => (s += String.fromCharCode(b)));
+  return btoa(s);
+};
+const unb64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+const keyCache = new Map<string, CryptoKey>();
+const saltFor = new Map<string, string>();
+
+async function deriveKey(pass: string, saltB64: string): Promise<CryptoKey> {
+  const id = pass + '|' + saltB64;
+  const hit = keyCache.get(id);
+  if (hit) return hit;
+  const subtle = globalThis.crypto?.subtle;
+  if (!subtle) throw new SyncError('invalid', "This browser can't do encryption.");
+  const base = await subtle.importKey('raw', new TextEncoder().encode(pass), 'PBKDF2', false, ['deriveKey']);
+  const key = await subtle.deriveKey({ name: 'PBKDF2', salt: unb64(saltB64), iterations: 150_000, hash: 'SHA-256' }, base, { name: 'AES-GCM', length: 256 }, false, ['encrypt', 'decrypt']);
+  keyCache.set(id, key);
+  return key;
+}
+
+interface Wrapper {
+  'petalkeeper-encrypted': 1;
+  salt: string;
+  iv: string;
+  data: string;
+}
+export async function encryptText(text: string, pass: string): Promise<string> {
+  let salt = saltFor.get(pass);
+  if (!salt) {
+    salt = b64(globalThis.crypto.getRandomValues(new Uint8Array(16)));
+    saltFor.set(pass, salt);
+  }
+  const iv = globalThis.crypto.getRandomValues(new Uint8Array(12));
+  const key = await deriveKey(pass, salt);
+  const ct = await globalThis.crypto.subtle.encrypt({ name: 'AES-GCM', iv }, key, new TextEncoder().encode(text));
+  const w: Wrapper = { 'petalkeeper-encrypted': 1, salt, iv: b64(iv), data: b64(new Uint8Array(ct)) };
+  return JSON.stringify(w);
+}
+export async function decryptText(w: Wrapper, pass: string): Promise<string> {
+  try {
+    const key = await deriveKey(pass, w.salt);
+    const pt = await globalThis.crypto.subtle.decrypt({ name: 'AES-GCM', iv: unb64(w.iv) }, key, unb64(w.data));
+    saltFor.set(pass, w.salt);
+    return new TextDecoder().decode(pt);
+  } catch (e) {
+    if (e instanceof SyncError) throw e;
+    throw new SyncError('locked', "That passphrase doesn't open the cloud copy.");
+  }
+}
+const isWrapper = (x: unknown): x is Wrapper => typeof x === 'object' && x !== null && (x as Record<string, unknown>)['petalkeeper-encrypted'] === 1;
 
 /* ---------- GitHub contents API ---------- */
 
@@ -230,8 +301,8 @@ export interface Remote {
   sha?: string;
 }
 
-export async function getRemote(c: SyncConfig, f: Fetch = fetch): Promise<Remote> {
-  const res = await call(f, c, url(c, `/contents/${encodeURIComponent(c.path)}`));
+export async function getRemote(c: SyncConfig, f: Fetch = fetch, ref?: string): Promise<Remote> {
+  const res = await call(f, c, url(c, `/contents/${encodeURIComponent(c.path)}${ref ? `?ref=${encodeURIComponent(ref)}` : ''}`));
   if (res.status === 404) {
     // 404 can mean "no such file yet" or "no such repo"; the second was ruled out by testConnection
     return { data: null };
@@ -242,7 +313,12 @@ export async function getRemote(c: SyncConfig, f: Fetch = fetch): Promise<Remote
   let parsed: unknown;
   try {
     parsed = JSON.parse(dec(body.content));
-  } catch {
+    if (isWrapper(parsed)) {
+      if (!c.passphrase) throw new SyncError('locked', 'This cloud copy is encrypted. Enter your passphrase to connect.');
+      parsed = JSON.parse(await decryptText(parsed, c.passphrase));
+    }
+  } catch (e) {
+    if (e instanceof SyncError) throw e;
     throw new SyncError('invalid', 'The cloud file is not valid Petalkeeper data. Nothing was changed.');
   }
   const v = validateData(parsed);
@@ -253,7 +329,7 @@ export async function getRemote(c: SyncConfig, f: Fetch = fetch): Promise<Remote
 export async function putRemote(c: SyncConfig, data: AppData, sha: string | undefined, f: Fetch = fetch): Promise<string> {
   const res = await call(f, c, url(c, `/contents/${encodeURIComponent(c.path)}`), {
     method: 'PUT',
-    body: JSON.stringify({ message: 'Petalkeeper sync', content: enc(exportJSON(data)), ...(sha ? { sha } : {}) }),
+    body: JSON.stringify({ message: 'Petalkeeper sync', content: enc(c.passphrase ? await encryptText(exportJSON(data), c.passphrase) : exportJSON(data)), ...(sha ? { sha } : {}) }),
   });
   if (!res.ok) throw failFrom(res);
   const body = (await res.json()) as { content?: { sha?: string } };
@@ -284,7 +360,31 @@ export async function runSync(c: SyncConfig, local: AppData, base: AppData | nul
 }
 
 /** Replace the cloud copy with this device's data. */
+/** just the current file's id, so it can be replaced even if it can't be read (for example after changing the passphrase) */
+export async function remoteSha(c: SyncConfig, f: Fetch = fetch): Promise<string | undefined> {
+  const res = await call(f, c, url(c, `/contents/${encodeURIComponent(c.path)}`));
+  if (res.status === 404) return undefined;
+  if (!res.ok) throw failFrom(res);
+  return ((await res.json()) as { sha?: string }).sha;
+}
+
 export async function pushReplace(c: SyncConfig, local: AppData, f: Fetch = fetch): Promise<void> {
-  const remote = await getRemote(c, f);
-  await putRemote(c, forCloud(local), remote.sha, f);
+  await putRemote(c, forCloud(local), await remoteSha(c, f), f);
+}
+
+export interface Version {
+  sha: string;
+  date: string;
+}
+/** the saved versions of the cloud file, newest first (GitHub keeps every sync) */
+export async function listVersions(c: SyncConfig, f: Fetch = fetch): Promise<Version[]> {
+  const res = await call(f, c, url(c, `/commits?path=${encodeURIComponent(c.path)}&per_page=30`));
+  if (!res.ok) throw failFrom(res);
+  const rows = (await res.json()) as { sha: string; commit?: { committer?: { date?: string }; author?: { date?: string } } }[];
+  return rows.map((r) => ({ sha: r.sha, date: r.commit?.committer?.date ?? r.commit?.author?.date ?? '' }));
+}
+export async function getVersion(c: SyncConfig, sha: string, f: Fetch = fetch): Promise<AppData> {
+  const r = await getRemote(c, f, sha);
+  if (!r.data) throw new SyncError('notfound', 'That version could not be found.');
+  return r.data;
 }

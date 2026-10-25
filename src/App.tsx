@@ -5,18 +5,23 @@ import { fmtTime, nowMinutes, toMinutes } from './lib/dates';
 import { UIProvider } from './ui';
 import { SyncProvider, useSync } from './sync';
 import { LockGate, Tour } from './components/Gate';
-import { applyTextSize, getTextSize } from './lib/device';
+import { applyTextSize, autoBackupDue, getTextSize, markAutoBackup } from './lib/device';
+import { exportJSON } from './lib/storage';
+import { downloadText } from './lib/ics';
+import { makeTask } from './lib/schedule';
 import { Today } from './pages/Today';
 import { Rituals } from './pages/Rituals';
 import { Path } from './pages/Path';
 import { Seeds } from './pages/Seeds';
 import { Shed } from './pages/Shed';
+import { Journal } from './pages/Journal';
 
 const PAGES = [
   { id: 'today', label: "Today's Garden", sub: 'Your day', icon: '🌼' },
   { id: 'rituals', label: 'Daily Rituals', sub: 'Routines', icon: '🌿' },
   { id: 'path', label: 'The Garden Path', sub: 'Week', icon: '🗓️' },
   { id: 'seeds', label: 'Seed Pouch', sub: 'Tasks', icon: '🌱' },
+  { id: 'journal', label: 'Garden Journal', sub: 'Moods & notes', icon: '📖' },
   { id: 'shed', label: 'Garden Shed', sub: 'Settings', icon: '🧺' },
 ] as const;
 type PageId = (typeof PAGES)[number]['id'];
@@ -80,9 +85,43 @@ function SyncChip({ onOpen }: { onOpen: () => void }) {
   );
 }
 
+/** Text shared to Petalkeeper from another app lands in the Seed Pouch (Android, when installed). */
+function useShareTarget(go: (id: PageId) => void) {
+  const { addTask, notify } = useStore();
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    const title = (q.get('title') ?? '').trim();
+    const text = (q.get('text') ?? '').trim();
+    const link = (q.get('url') ?? '').trim();
+    if (!title && !text && !link) return;
+    const name = (title || text || link).split('\n')[0].slice(0, 120);
+    const notes = [text && text !== name ? text : '', link && link !== name ? link : ''].filter(Boolean).join('\n');
+    addTask(makeTask({ title: name, notes }));
+    notify('Added to your Seed Pouch.');
+    window.history.replaceState(null, '', window.location.pathname + '#/seeds');
+    go('seeds');
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
+/** If you've turned it on, saves a backup file to your downloads about once a week (desktop browsers). */
+function useWeeklyBackup() {
+  const { data, today, updateSettings } = useStore();
+  useEffect(() => {
+    if (!autoBackupDue(today)) return;
+    try {
+      downloadText(`petalkeeper-backup-${today}.json`, exportJSON(data), 'application/json');
+      markAutoBackup(today);
+      updateSettings({ lastBackup: today });
+    } catch {
+      /* downloads blocked: the manual backup nudge still works */
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+}
+
 function Shell() {
   const { data } = useStore();
   useReminders();
+  useWeeklyBackup();
   useEffect(() => applyTextSize(getTextSize()), []);
   const [page, setPage] = useState<PageId>(() => fromHash() ?? data.settings.defaultPage);
 
@@ -97,6 +136,7 @@ function Shell() {
     setPage(id);
     window.scrollTo?.(0, 0);
   };
+  useShareTarget(go);
 
   return (
     <div className="app">
@@ -129,6 +169,7 @@ function Shell() {
         {page === 'rituals' && <Rituals />}
         {page === 'path' && <Path />}
         {page === 'seeds' && <Seeds />}
+        {page === 'journal' && <Journal />}
         {page === 'shed' && <Shed />}
       </main>
       <ToastBar />

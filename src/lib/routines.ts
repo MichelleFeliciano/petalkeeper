@@ -4,25 +4,32 @@ import type { AppData, PartOfDay, Routine, RoutineStep, Settings } from './types
 
 /* ---------- pausing and gentle days ---------- */
 
-export const isPaused = (s: Settings, date: string): boolean => !!s.pausedFrom && !!s.pausedUntil && s.pausedFrom <= date && date <= s.pausedUntil;
+export const isPaused = (s: Settings, date: string): boolean =>
+  (!!s.pausedFrom && !!s.pausedUntil && s.pausedFrom <= date && date <= s.pausedUntil) || s.plannedPauses.some((p) => p.from <= date && date <= p.until);
 export const isGentle = (s: Settings, date: string): boolean => s.gentleOn === date;
+/** where you are on a date: a planned stay wins, otherwise the place you've switched to */
+export const placeOn = (s: Settings, date: string): string => s.stays.find((st) => st.from <= date && date <= st.until)?.place ?? s.place;
+/** things with no places listed belong everywhere */
+export const atPlace = (x: { places?: string[] }, place: string): boolean => !x.places || x.places.length === 0 || x.places.includes(place);
+export const placeLabel = (s: Settings, id: string) => s.places.find((p) => p.id === id);
 export const stepOn = (st: RoutineStep, date: string): boolean => !st.days || st.days.length === 0 || st.days.includes(fromISO(date).getDay());
 
 /** Steps that apply on this date: right weekday and, on a gentle day, only the essentials (if any are marked). */
-export function stepsFor(r: Routine, date: string, gentle: boolean): RoutineStep[] {
-  const todays = r.steps.filter((st) => stepOn(st, date));
+export function stepsFor(r: Routine, date: string, gentle: boolean, place?: string): RoutineStep[] {
+  const todays = r.steps.filter((st) => stepOn(st, date) && (place === undefined || atPlace(st, place)));
   if (!gentle) return todays;
   const keep = todays.filter((st) => st.essential);
   return keep.length > 0 ? keep : todays;
 }
 
 /** Routines to show on a date: the right weekday and not resting. */
-export const routinesFor = (d: AppData, date: string): Routine[] => (isPaused(d.settings, date) ? [] : d.routines.filter((r) => routineOn(r, date)));
+export const routinesFor = (d: AppData, date: string): Routine[] =>
+  isPaused(d.settings, date) ? [] : d.routines.filter((r) => routineOn(r, date) && atPlace(r, placeOn(d.settings, date)));
 
 /** progress for one routine on one date, counting only what applies that day (optional steps never block "complete") */
-export function progressOf(d: AppData, r: Routine, date: string) {
+export function progressOf(d: AppData, r: Routine, date: string, anyPlace = false) {
   const day = d.routineLog[date]?.[r.id] ?? { done: [], skipped: [] };
-  const steps = stepsFor(r, date, isGentle(d.settings, date)).filter((st) => !day.skipped.includes(st.id));
+  const steps = stepsFor(r, date, isGentle(d.settings, date), anyPlace ? undefined : placeOn(d.settings, date)).filter((st) => !day.skipped.includes(st.id));
   const required = steps.filter((st) => !st.optional);
   const doneRequired = required.filter((st) => day.done.includes(st.id)).length;
   const done = steps.filter((st) => day.done.includes(st.id)).length;
@@ -51,7 +58,9 @@ export type DayMark = 'off' | 'none' | 'some' | 'all';
 export function historyFor(d: AppData, r: Routine, dates: string[]): DayMark[] {
   return dates.map((date) => {
     if (!routineOn(r, date)) return 'off';
-    const pr = progressOf(d, r, date);
+    const pr = progressOf(d, r, date, true);
+    // a routine for somewhere else is just resting that day, unless you did some of it anyway
+    if (!atPlace(r, placeOn(d.settings, date)) && pr.done === 0) return 'off';
     if (pr.total === 0) return 'off';
     if (pr.complete) return 'all';
     return pr.done > 0 ? 'some' : 'none';

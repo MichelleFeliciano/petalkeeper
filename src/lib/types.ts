@@ -98,6 +98,8 @@ export interface Routine {
   days?: number[];
   /** time (HH:MM) for a phone-calendar nudge when exported as .ics */
   remindAt?: string;
+  /** places this routine belongs to (a place id, like "home" or "moms"); missing or empty means everywhere */
+  places?: string[];
 }
 
 export interface RoutineStep {
@@ -110,12 +112,19 @@ export interface RoutineStep {
   optional?: boolean;
   /** weekdays this step applies to (0 = Sunday); missing means every day the routine runs */
   days?: number[];
+  /** a private note or link, like an address or a phone number */
+  note?: string;
+  /** places this step applies to (a place id); missing means everywhere the routine runs */
+  places?: string[];
 }
 
 /** progress is keyed by date, so a new day automatically starts fresh */
 export interface RoutineDay {
   done: string[];
   skipped: string[];
+  /** optional timing: ISO timestamps from the Start and Finished buttons */
+  start?: string;
+  end?: string;
 }
 export type RoutineLog = Record<string, Record<string, RoutineDay>>; // date -> routineId -> day
 
@@ -141,6 +150,13 @@ export interface Settings {
   pausedUntil?: string;
   /** gentle (essentials-only) mode is on for this ISO date, and switches itself off the next day */
   gentleOn?: string;
+  /** rests planned ahead, like a trip */
+  plannedPauses: PlannedPause[];
+  /** where you are right now; routines and steps tied to other places step aside */
+  places: Place[];
+  place: string;
+  /** stays planned ahead, like a weekend at Mom's; they switch the place by themselves */
+  stays: Stay[];
 }
 
 export interface TemplateItem {
@@ -158,6 +174,42 @@ export interface Template {
   id: string;
   name: string;
   items: TemplateItem[];
+}
+
+export interface Place {
+  id: string;
+  label: string;
+  icon: string;
+}
+export interface Stay {
+  id: string;
+  place: string;
+  from: string;
+  until: string;
+}
+export const DEFAULT_PLACES: Place[] = [
+  { id: 'home', label: 'Home', icon: '🏡' },
+  { id: 'moms', label: "Mom's", icon: '💐' },
+  { id: 'vacation', label: 'Vacation', icon: '🏖️' },
+  { id: 'roadtrip', label: 'Road trip', icon: '🚗' },
+];
+
+export interface PlannedPause {
+  id: string;
+  from: string;
+  until: string;
+}
+/** something done now and then, with the time you last did it */
+export interface Needed {
+  id: string;
+  label: string;
+  icon: string;
+}
+export interface Countdown {
+  id: string;
+  label: string;
+  icon: string;
+  date: string;
 }
 
 export interface Counter {
@@ -194,6 +246,10 @@ export interface AppData {
   counterLog: Record<string, Record<string, number>>;
   /** date -> how the day felt; private and optional */
   checkins: Record<string, Checkin>;
+  needed: Needed[];
+  /** needed-item id -> ISO timestamps, oldest first */
+  neededLog: Record<string, string[]>;
+  countdowns: Countdown[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -208,4 +264,8 @@ export const DEFAULT_SETTINGS: Settings = {
   notifyLead: 10,
   decor: 'blooms',
   customCategories: [],
+  plannedPauses: [],
+  places: DEFAULT_PLACES,
+  place: 'home',
+  stays: [],
 };

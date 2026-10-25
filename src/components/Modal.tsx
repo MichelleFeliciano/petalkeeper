@@ -5,8 +5,12 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
 
   useEffect(() => {
     const prev = document.activeElement as HTMLElement | null;
-    const first = ref.current?.querySelector<HTMLElement>('input, select, textarea, button');
-    first?.focus();
+    const root = ref.current;
+    const first =
+      root?.querySelector<HTMLElement>('input:not([type=hidden]):not(:disabled), select:not(:disabled), textarea:not(:disabled)') ??
+      root?.querySelector<HTMLElement>('.actions .btn') ??
+      root?.querySelector<HTMLElement>('button');
+    (first ?? root)?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
       if (e.key === 'Tab' && ref.current) {
@@ -33,7 +37,7 @@ export function Modal({ title, onClose, children, wide }: { title: string; onClo
 
   return (
     <div className="backdrop" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={'modal' + (wide ? ' wide' : '')} role="dialog" aria-modal="true" aria-label={title} ref={ref}>
+      <div className={'modal' + (wide ? ' wide' : '')} role="dialog" aria-modal="true" aria-label={title} ref={ref} tabIndex={-1}>
         <div className="modal-head">
           <h2>{title}</h2>
           <button className="btn ghost" onClick={onClose} aria-label="Close">

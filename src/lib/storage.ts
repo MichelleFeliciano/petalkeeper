@@ -53,6 +53,21 @@ export function validateData(raw: unknown): ValidateResult {
   }
   if (!isObj(raw.routineLog)) return { ok: false, error: 'Routine history is malformed.' };
   if (!isObj(raw.settings)) return { ok: false, error: 'Settings are malformed.' };
+  const routineLog: AppData['routineLog'] = {};
+  for (const [date, rs] of Object.entries(raw.routineLog)) {
+    if (!isISODate(date) || !isObj(rs)) continue;
+    const row: AppData['routineLog'][string] = {};
+    for (const [rid, day] of Object.entries(rs)) {
+      if (!isObj(day)) continue;
+      row[rid] = {
+        done: Array.isArray(day.done) ? day.done.filter(isStr) : [],
+        skipped: Array.isArray(day.skipped) ? day.skipped.filter(isStr) : [],
+        ...(isStr(day.start) ? { start: day.start } : {}),
+        ...(isStr(day.end) ? { end: day.end } : {}),
+      };
+    }
+    routineLog[date] = row;
+  }
   const s = raw.settings as Partial<Settings>;
   const settings: Settings = { ...DEFAULT_SETTINGS };
   if (s.weekStart === 0 || s.weekStart === 1) settings.weekStart = s.weekStart;
@@ -157,7 +172,7 @@ export function validateData(raw: unknown): ValidateResult {
       version: 1,
       tasks: raw.tasks as Task[],
       routines: raw.routines as AppData['routines'],
-      routineLog: raw.routineLog as AppData['routineLog'],
+      routineLog,
       settings,
       blooms: typeof raw.blooms === 'number' && raw.blooms >= 0 ? raw.blooms : 0,
     },
@@ -180,7 +195,8 @@ export function loadData(): AppData {
   }
   // Corrupted: keep a copy of the raw text so nothing is silently lost.
   try {
-    localStorage.setItem(STORAGE_KEY + '.corrupt', text);
+    // keep the first damaged copy; don't overwrite it with a later one
+    if (localStorage.getItem(STORAGE_KEY + '.corrupt') === null) localStorage.setItem(STORAGE_KEY + '.corrupt', text);
   } catch {
     /* ignore */
   }

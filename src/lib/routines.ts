@@ -8,7 +8,8 @@ export const isPaused = (s: Settings, date: string): boolean =>
   (!!s.pausedFrom && !!s.pausedUntil && s.pausedFrom <= date && date <= s.pausedUntil) || s.plannedPauses.some((p) => p.from <= date && date <= p.until);
 export const isGentle = (s: Settings, date: string): boolean => s.gentleOn === date;
 /** where you are on a date: a planned stay wins, otherwise the place you've switched to */
-export const placeOn = (s: Settings, date: string): string => s.stays.find((st) => st.from <= date && date <= st.until)?.place ?? s.place;
+export const placeOn = (s: Settings, date: string): string =>
+  s.stays.find((st) => st.from <= date && date <= st.until && s.places.some((p) => p.id === st.place))?.place ?? s.place;
 /** things with no places listed belong everywhere */
 export const atPlace = (x: { places?: string[] }, place: string): boolean => !x.places || x.places.length === 0 || x.places.includes(place);
 export const placeLabel = (s: Settings, id: string) => s.places.find((p) => p.id === id);
@@ -156,10 +157,14 @@ export function buildRoutineICS(routines: Routine[], fromDate: string): { text: 
   for (const r of routines) {
     if (!r.remindAt) continue;
     count++;
-    const d8 = fromDate.split('-').join('');
+    const wanted = r.days && r.days.length > 0 && r.days.length < 7 ? r.days : null;
+    let first = fromDate;
+    for (let i = 0; wanted && i < 7 && !wanted.includes(fromISO(first).getDay()); i++) first = addDays(first, 1);
+    const d8 = first.split('-').join('');
     const t = r.remindAt.replace(':', '') + '00';
     const [h, m] = r.remindAt.split(':').map(Number);
-    const end = `${String(Math.floor((h * 60 + m + 15) / 60) % 24).padStart(2, '0')}${String((m + 15) % 60).padStart(2, '0')}00`;
+    const endMin = Math.min(h * 60 + m + 15, 23 * 60 + 59);
+    const end = `${String(Math.floor(endMin / 60)).padStart(2, '0')}${String(endMin % 60).padStart(2, '0')}00`;
     const rule = r.days && r.days.length > 0 && r.days.length < 7 ? `FREQ=WEEKLY;BYDAY=${[...r.days].sort((a, b) => a - b).map((x) => BYDAY[x]).join(',')}` : 'FREQ=DAILY';
     const esc = (s: string) => s.split('\\').join('\\\\').split(';').join('\\;').split(',').join('\\,');
     lines.push(

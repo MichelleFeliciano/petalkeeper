@@ -432,3 +432,12 @@ export const addStay = (d: AppData, place: string, from: string, until: string):
   settings: { ...d.settings, stays: [...d.settings.stays, { id: newId(), place, from, until: until < from ? from : until }] },
 });
 export const removeStay = (d: AppData, id: string): AppData => ({ ...d, settings: { ...d.settings, stays: d.settings.stays.filter((s) => s.id !== id) } });
+
+/** end a planned stay early (you came home): it stops the day before `until`, or disappears if it hadn't started */
+export const endStay = (d: AppData, id: string, lastDay: string): AppData => ({
+  ...d,
+  settings: {
+    ...d.settings,
+    stays: d.settings.stays.flatMap((s) => (s.id !== id ? [s] : lastDay < s.from ? [] : [{ ...s, until: lastDay < s.until ? lastDay : s.until }])),
+  },
+});

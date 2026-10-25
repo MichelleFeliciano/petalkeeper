@@ -64,6 +64,9 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   dataRef.current = data;
   const baseRef = useRef<AppData | null>(loadBase());
   const busy = useRef(false);
+  // keep the latest replaceAll in a ref: it changes identity on every edit, and must not retrigger syncing
+  const replaceRef = useRef(replaceAll);
+  replaceRef.current = replaceAll;
 
   const syncNow = useCallback(async () => {
     if (!config || busy.current) return;
@@ -74,7 +77,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     try {
       const { merged } = await runSync(config, snapshot, baseRef.current);
       if (stable(dataRef.current) === stable(snapshot)) {
-        if (stable(merged) !== stable(snapshot)) replaceAll(merged);
+        if (stable(merged) !== stable(snapshot)) replaceRef.current(merged);
         baseRef.current = merged;
         saveBase(merged);
         setLastSync(new Date().toISOString());
@@ -89,7 +92,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     } finally {
       busy.current = false;
     }
-  }, [config, replaceAll]);
+  }, [config]);
 
   // push local edits shortly after they happen
   useEffect(() => {

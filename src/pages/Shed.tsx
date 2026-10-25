@@ -193,7 +193,7 @@ export function Shed() {
       <section className="card" aria-labelledby="bk-h">
         <h2 id="bk-h">Backup &amp; restore</h2>
         <p>
-          Everything is stored only in this browser on this device. It does not sync to other devices and can be lost if you clear browser data, so export a backup now and then.
+          Your data lives in this browser on this device. Sync (above) can keep your other devices in step, but it can still be lost if you clear browser data, so export a backup now and then.
         </p>
         <div className="actions left">
           <button className="btn primary" onClick={exportNow}>Export backup (JSON)</button>

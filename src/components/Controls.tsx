@@ -5,7 +5,7 @@ import { isGentle, isPaused, placeLabel, placeOn } from '../lib/routines';
 
 /** Where you are right now. Routines and steps tied to other places step aside. */
 export function PlaceSwitcher() {
-  const { data, today, updateSettings } = useStore();
+  const { data, today, updateSettings, endStay } = useStore();
   const { settings } = data;
   const at = placeOn(settings, today);
   const stay = settings.stays.find((s) => s.from <= today && today <= s.until);
@@ -25,7 +25,12 @@ export function PlaceSwitcher() {
           ))}
         </select>
       </label>
-      {stay && <span className="meta">A planned stay through {stay.until} has switched this for you.</span>}
+      {stay && (
+        <span className="meta">
+          A planned stay through {stay.until} has switched this for you.{' '}
+          <button className="btn small" onClick={() => endStay(stay.id, addDays(today, -1))}>I'm back, end this stay</button>
+        </span>
+      )}
     </div>
   );
 }

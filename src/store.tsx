@@ -94,6 +94,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const store = useMemo<Store>(() => {
+    const clearUndo = () => {
+      snap.current = null;
+      setToast((t) => (t?.undoable ? null : t));
+    };
     const w: Record<string, unknown> = {};
     for (const [name, fn] of Object.entries(ops)) {
       if (name === 'routineDay') continue;
@@ -106,10 +110,18 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       today,
       saveFailed,
       toast,
-      replaceAll: (d: AppData) => setData(d),
-      resetSample: () => setData({ ...sampleData(), settings: data.settings }),
-      resetEverything: () =>
-        setData({ version: 1, tasks: [], routines: [], routineLog: {}, settings: { ...DEFAULT_SETTINGS }, blooms: 0, templates: [], counters: [], counterLog: {}, checkins: {}, needed: [], neededLog: {}, countdowns: [] }),
+      replaceAll: (d: AppData) => {
+        clearUndo();
+        setData(d);
+      },
+      resetSample: () => {
+        clearUndo();
+        setData({ ...sampleData(), settings: data.settings });
+      },
+      resetEverything: () => {
+        clearUndo();
+        setData({ version: 1, tasks: [], routines: [], routineLog: {}, settings: { ...DEFAULT_SETTINGS }, blooms: 0, templates: [], counters: [], counterLog: {}, checkins: {}, needed: [], neededLog: {}, countdowns: [] });
+      },
       notify: (text: string) => setToast({ id: ++toastId, text, undoable: false }),
       undo: () => {
         if (snap.current) setData(snap.current);

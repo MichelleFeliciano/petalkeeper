@@ -72,9 +72,9 @@ export function Journal() {
           <h2>{title}</h2>
           <button className="btn small" onClick={() => setMonth(shiftMonth(month, 1))} aria-label="Next month">›</button>
         </div>
-        <div className="cal" role="grid" aria-label={title}>
+        <div className="cal" role="group" aria-label={title}>
           {dayNames.map((n) => (
-            <span key={n} className="cal-h" role="columnheader">{n}</span>
+            <span key={n} className="cal-h" aria-hidden="true">{n}</span>
           ))}
           {weeks.flat().map((d) => {
             const mood = data.checkins[d]?.mood;
@@ -82,7 +82,6 @@ export function Journal() {
             return (
               <button
                 key={d}
-                role="gridcell"
                 className={'cal-day' + (d === sel ? ' sel' : '') + (d === today ? ' today' : '') + (out ? ' out' : '')}
                 onClick={() => setSel(d)}
                 aria-label={`${fmtLong(d)}${mood ? ', ' + MOODS.find((m) => m.id === mood)?.label : ''}${data.checkins[d]?.note ? ', has a note' : ''}`}
@@ -98,12 +97,11 @@ export function Journal() {
 
       <section className="card" aria-labelledby="jd-h">
         <h2 id="jd-h">{fmtLong(sel)}</h2>
-        <div className="moods" role="radiogroup" aria-label="Mood for this day">
+        <div className="moods" role="group" aria-label="Mood for this day">
           {MOODS.map((m) => (
             <button
               key={m.id}
-              role="radio"
-              aria-checked={c.mood === m.id}
+                            aria-pressed={c.mood === m.id}
               className={'mood' + (c.mood === m.id ? ' on' : '')}
               onClick={() => setCheckin(sel, { mood: c.mood === m.id ? undefined : m.id })}
               aria-label={m.label}

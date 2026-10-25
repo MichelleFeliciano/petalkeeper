@@ -148,12 +148,11 @@ export function CheckIn() {
   return (
     <section className="card" aria-labelledby="ck-h">
       <h2 id="ck-h">How is today feeling?</h2>
-      <div className="moods" role="radiogroup" aria-label="Mood">
+      <div className="moods" role="group" aria-label="Mood">
         {MOODS.map((m) => (
           <button
             key={m.id}
-            role="radio"
-            aria-checked={c.mood === m.id}
+                        aria-pressed={c.mood === m.id}
             className={'mood' + (c.mood === m.id ? ' on' : '')}
             onClick={() => setCheckin(today, { mood: c.mood === m.id ? undefined : m.id })}
             aria-label={m.label}

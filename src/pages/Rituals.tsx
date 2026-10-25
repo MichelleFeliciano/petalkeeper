@@ -218,7 +218,12 @@ function RoutineCard({ routine, first, last }: { routine: Routine; first: boolea
               <button className="btn small" onClick={() => s.finishRoutine(today, routine.id, new Date().toISOString())}>Finished</button>
             </>
           )}
-          {day.start && day.end && <>Took about {Math.max(1, Math.round((new Date(day.end).getTime() - new Date(day.start).getTime()) / 60000))} min today. </>}
+          {day.start && day.end && (
+            <>
+              Took about {Math.max(1, Math.round((new Date(day.end).getTime() - new Date(day.start).getTime()) / 60000))} min today.{' '}
+              <button className="btn ghost small" onClick={() => s.startRoutine(today, routine.id, new Date().toISOString())}>Start again</button>
+            </>
+          )}
           {typical && <>Usually about {typical.minutes} min (last {typical.samples} times). Just for your curiosity.</>}
         </p>
       )}
@@ -231,8 +236,6 @@ function RoutineCard({ routine, first, last }: { routine: Routine; first: boolea
             <li
               key={st.id}
               className={(isDone ? 'done' : isSkipped ? 'skipped' : '') + (dragIdx === i ? ' dragging' : '')}
-              draggable={editing}
-              onDragStart={() => setDragIdx(i)}
               onDragOver={(e) => editing && e.preventDefault()}
               onDrop={() => {
                 if (dragIdx === null || dragIdx === i) return;
@@ -244,6 +247,11 @@ function RoutineCard({ routine, first, last }: { routine: Routine; first: boolea
               }}
               onDragEnd={() => setDragIdx(null)}
             >
+              {editing && (
+                <span className="step-handle" draggable onDragStart={() => setDragIdx(i)} title="Drag to reorder" aria-hidden="true">
+                  ⠿
+                </span>
+              )}
               <label>
                 <input type="checkbox" className="check" checked={isDone} disabled={isSkipped} onChange={() => s.toggleStep(today, routine.id, st.id)} />
                 <span>

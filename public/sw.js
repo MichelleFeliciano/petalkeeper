@@ -1,5 +1,5 @@
 // Minimal offline cache: network first, fall back to the cached copy.
-const CACHE = 'petalkeeper-v2';
+const CACHE = 'petalkeeper-v3';
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', './index.html', './icon.svg', './icon-180.png', './favicon.svg'])).then(() => self.skipWaiting()));
 });
@@ -10,14 +10,19 @@ self.addEventListener('activate', (e) => {
 });
 self.addEventListener('fetch', (e) => {
   const req = e.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  const url = new URL(req.url);
+  if (req.method !== 'GET' || url.origin !== self.location.origin) return;
+  // only keep plain files: not version checks, shared-text links or other query URLs, and never error pages
+  const keep = !url.search && !url.pathname.endsWith('/version.json');
   e.respondWith(
     fetch(req)
       .then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(req, copy));
+        if (keep && res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, copy));
+        }
         return res;
       })
-      .catch(() => caches.match(req).then((r) => r || caches.match('./index.html'))),
+      .catch(() => caches.match(req, { ignoreSearch: true }).then((r) => r || caches.match('./index.html'))),
   );
 });

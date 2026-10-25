@@ -83,7 +83,7 @@ describe('routine logic', () => {
     const { text, count } = buildRoutineICS(d.routines, T);
     expect(count).toBe(1);
     expect(text).toContain('RRULE:FREQ=WEEKLY;BYDAY=SU');
-    expect(text).toContain('DTSTART:20260303T093000');
+    expect(text).toContain('DTSTART:20260308T093000'); // first Sunday on or after the export date
     expect(text).toContain('BEGIN:VALARM');
   });
 });
@@ -184,8 +184,8 @@ describe('new screens', () => {
     await user.click(screen.getByRole('button', { name: 'Add' }));
     await user.click(screen.getByRole('button', { name: 'One more Water' }));
     expect(screen.getByText('Water').parentElement).toHaveTextContent('Water 1');
-    await user.click(screen.getByRole('radio', { name: 'Good' }));
-    expect(screen.getByRole('radio', { name: 'Good' })).toHaveAttribute('aria-checked', 'true');
+    await user.click(screen.getByRole('button', { name: 'Good' }));
+    expect(screen.getByRole('button', { name: 'Good' })).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('starts a routine from a ready-made one', async () => {

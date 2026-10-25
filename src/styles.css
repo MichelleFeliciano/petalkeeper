@@ -27,7 +27,7 @@
   --shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--cream); color: var(--ink); line-height: 1.5; font-size: 17px; }
+body { margin: 0; background: var(--cream); color: var(--ink); line-height: 1.5; font-size: 1.0625rem; }
 h1, h2 { font-weight: normal; line-height: 1.2; margin: 0 0 0.5rem; }
 h1 { font-size: 1.9rem; }
 h2 { font-size: 1.25rem; margin-top: 1.4rem; }
@@ -36,7 +36,7 @@ h2 small { margin-left: 0.5rem; font-weight: normal; }
 .eyebrow { margin: 0; letter-spacing: 0.04em; text-transform: uppercase; font-size: 0.75rem; }
 .hint { margin: 0.25rem 0 0.75rem; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
-:focus-visible { outline: 3px solid var(--lilac); outline-offset: 2px; border-radius: 6px; }
+:focus-visible { outline: 3px solid var(--moss); outline-offset: 2px; border-radius: 6px; }
 :root[data-theme='dark'] :focus-visible { outline-color: var(--petal); }
 .skip { position: absolute; left: -999px; } .skip:focus { left: 8px; top: 8px; background: var(--card); padding: 8px; z-index: 50; }
 
@@ -85,7 +85,7 @@ main { padding: 1.5rem; min-width: 0; }
 .task.conflict { outline: 2px dashed var(--warn); }
 .task-title { font-size: 1.05rem; }
 .task-actions { grid-column: 2; display: flex; flex-wrap: wrap; gap: 0.1rem; }
-.meta { display: flex; flex-wrap: wrap; gap: 0.2rem 0.8rem; }
+div.meta, p.meta { display: flex; flex-wrap: wrap; gap: 0.2rem 0.8rem; }
 .notes { margin: 0.2rem 0; color: var(--ink-soft); font-size: 0.9rem; }
 .steps { list-style: none; margin: 0.4rem 0; padding: 0; } .steps li { padding: 2px 0; }
 .check, input[type='checkbox'] { width: 22px; height: 22px; accent-color: var(--btn); cursor: pointer; vertical-align: middle; }
@@ -192,11 +192,12 @@ code { background: rgba(168, 185, 154, 0.3); padding: 0 4px; border-radius: 4px;
 .chip.on { background: var(--sage, #a8b99a); color: #2f3a28; font-weight: 600; }
 .chip input { position: absolute; opacity: 0; width: 1px; height: 1px; }
 .chip:focus-within { outline: 2px solid var(--moss, #687b5d); outline-offset: 2px; }
-.badge { font-size: 0.8rem; padding: 2px 10px; border-radius: 999px; background: var(--lilac, #c9b8d9); color: #3b2f4a; }
+.routine-head .badge { font-size: 0.8rem; padding: 2px 10px; background: var(--lilac, #c9b8d9); color: #3b2f4a; }
 
 /* text size (per device) */
-html[data-text='large'] body { font-size: 19.5px; }
-html[data-text='xlarge'] body { font-size: 22px; }
+/* scale the root so rem-based sizes grow too */
+html[data-text='large'] { font-size: 115%; }
+html[data-text='xlarge'] { font-size: 130%; }
 
 /* do-this-now, rest, history, counters, mood */
 .donow { border-left: 6px solid var(--sage, #a8b99a); }
@@ -242,3 +243,16 @@ html[data-text='xlarge'] body { font-size: 22px; }
 ul.plain { list-style: none; padding: 0; margin: 6px 0; display: grid; gap: 6px; }
 .versions { list-style: none; padding: 0; display: grid; gap: 8px; }
 .sync-more { margin-top: 10px; }
+
+/* review fixes */
+:root { color-scheme: light; }
+:root[data-theme='dark'] { color-scheme: dark; }
+.card > h2:first-child { margin-top: 0; }
+label.inline select, label.inline input:not([type='checkbox']) { width: auto; }
+.step-handle { cursor: grab; user-select: none; padding: 0 4px; color: var(--ink-soft); }
+@supports (height: 100dvh) { .lock { min-height: 100dvh; } }
+@media (max-width: 760px) {
+  .app { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+  .side { padding-bottom: calc(0.3rem + env(safe-area-inset-bottom)); }
+  .toast { bottom: calc(84px + env(safe-area-inset-bottom)); }
+}

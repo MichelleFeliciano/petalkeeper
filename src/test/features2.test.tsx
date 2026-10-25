@@ -282,3 +282,60 @@ describe('screens', () => {
     expect(screen.getByText(/last just now/)).toBeInTheDocument();
   });
 });
+
+describe('review fixes', () => {
+  it('ends a stay early without touching other stays', () => {
+    let d = ops.addStay(emptyForTest(), 'moms', '2026-03-06', '2026-03-10');
+    d = ops.addStay(d, 'vacation', '2026-04-01', '2026-04-05');
+    const id = d.settings.stays[0].id;
+    expect(ops.endStay(d, id, '2026-03-07').settings.stays[0].until).toBe('2026-03-07');
+    expect(ops.endStay(d, id, '2026-03-01').settings.stays.map((s) => s.place)).toEqual(['vacation']);
+  });
+
+  it('ignores a stay that points at a place that no longer exists', () => {
+    let d = ops.addStay(emptyForTest(), 'moms', T, T);
+    d = { ...d, settings: { ...d.settings, places: d.settings.places.filter((p) => p.id !== 'moms') } };
+    expect(placeOn(d.settings, T)).toBe('home');
+  });
+
+  it('cleans up damaged routine history instead of crashing later', () => {
+    const d = emptyForTest();
+    const bad = { ...d, routineLog: { [T]: { r1: { done: 'oops', skipped: [1, 'a'] }, r2: 5 }, 'not-a-date': {} } };
+    const res = parseImport(JSON.stringify(bad));
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.data.routineLog[T].r1).toEqual({ done: [], skipped: ['a'] });
+      expect(res.data.routineLog[T].r2).toBeUndefined();
+      expect(res.data.routineLog['not-a-date']).toBeUndefined();
+    }
+  });
+});
+
+describe('sync does not run on every edit', () => {
+  it('waits for the pause after editing instead of syncing per change', async () => {
+    const gh = fakeGitHub();
+    let calls = 0;
+    const real = globalThis.fetch;
+    globalThis.fetch = ((...a: Parameters<typeof fetch>) => {
+      calls++;
+      return gh.f(...a);
+    }) as typeof fetch;
+    try {
+      localStorage.setItem('petalkeeper.sync', JSON.stringify({ repo: 'me/data', token: 't', path: 'petalkeeper.json', auto: true }));
+      window.history.pushState({}, '', '/');
+      window.location.hash = '';
+      const user = userEvent.setup();
+      render(<App />);
+      await new Promise((r) => setTimeout(r, 400)); // let the first sync on open finish
+      const before = calls;
+      await user.click(screen.getByRole('button', { name: /Add a counter/ }));
+      await user.type(screen.getByLabelText('Counter name'), 'Water');
+      await user.click(screen.getAllByRole('button', { name: 'Add' }).find((b) => b.closest('form')?.querySelector('[aria-label="Counter name"]'))!);
+      for (let i = 0; i < 4; i++) await user.click(screen.getByRole('button', { name: 'One more Water' }));
+      await new Promise((r) => setTimeout(r, 400));
+      expect(calls).toBe(before); // all of that is still waiting for the quiet moment
+    } finally {
+      globalThis.fetch = real;
+    }
+  });
+});

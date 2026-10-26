@@ -211,3 +211,48 @@ describe('accessibility checks', () => {
     await check(container);
   });
 });
+
+describe('undo only touches what it is about', () => {
+  it('undoing a task change leaves routine check-offs, notes and counters alone', async () => {
+    const user = userEvent.setup();
+    window.history.pushState({}, '', '/');
+    window.location.hash = '';
+    render(<App />);
+    // a routine check-off and a counter, then a task change, then undo the task change
+    const card = screen.getByRole('region', { name: 'Do this now' });
+    await user.click(within(card).getByRole('button', { name: /^Done: / }));
+    await goto(user, /Seed Pouch/);
+    await user.type(screen.getByPlaceholderText(/What needs doing/), 'Buy stamps');
+    await user.click(screen.getByRole('button', { name: 'Add' }));
+    expect(screen.getByText('Buy stamps')).toBeInTheDocument();
+    await wait(400);
+    await user.click(screen.getByRole('button', { name: /Undo/ }));
+    expect(screen.queryByText('Buy stamps')).not.toBeInTheDocument();
+    expect(localStorage.getItem('petalkeeper.v1')).toContain('"done":["'); // the routine check-off is still there
+  });
+
+  it('keeps the real day of a monthly to-do when it is edited', async () => {
+    const { makeTask: mk } = await import('../lib/schedule');
+    const t = mk({ title: 'Pay rent', date: '2026-01-31', recurrence: { freq: 'monthly', dom: 31 } });
+    localStorage.setItem('petalkeeper.v1', JSON.stringify(ops.addTask(emptyForTest(), t)));
+    const user = userEvent.setup();
+    window.history.pushState({}, '', '/');
+    window.location.hash = '#/seeds';
+    render(<App />);
+    await user.click(screen.getByRole('button', { name: 'Edit Pay rent' }));
+    await user.click(screen.getByRole('button', { name: 'Save changes' }));
+    expect(localStorage.getItem('petalkeeper.v1')).toContain('"dom":31');
+  });
+});
+
+describe('accessibility of the month view', () => {
+  it('has no automatic accessibility violations', async () => {
+    window.location.hash = '';
+    const user = userEvent.setup();
+    const { container } = render(<App />);
+    await user.click(screen.getByRole('button', { name: /The Garden Path/ }));
+    await user.click(screen.getByRole('button', { name: 'Month' }));
+    const res = await axe.run(container, { rules: { 'color-contrast': { enabled: false }, region: { enabled: false } } });
+    expect(res.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
+  });
+});

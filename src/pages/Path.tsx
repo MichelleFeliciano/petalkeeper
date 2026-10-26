@@ -70,17 +70,21 @@ export function Path() {
     <div className="page wide">
       <header>
         <p className="eyebrow">The Garden Path · your week</p>
-        <h1>{fmtShort(dates[0])} – {fmtShort(dates[6])}</h1>
+        <h1>{mode === 'month' ? 'Month' : `${fmtShort(dates[0])} – ${fmtShort(dates[6])}`}</h1>
         <div className="actions left">
-          <button className="btn" onClick={() => setAnchor(addDays(anchor, -7))} aria-label="Previous week">‹ Prev</button>
-          <button className="btn" onClick={() => setAnchor(today)}>This week</button>
-          <button className="btn" onClick={() => setAnchor(addDays(anchor, 7))} aria-label="Next week">Next ›</button>
+          {mode !== 'month' && (
+            <>
+              <button className="btn" onClick={() => setAnchor(addDays(anchor, -7))} aria-label="Previous week">‹ Prev</button>
+              <button className="btn" onClick={() => setAnchor(today)}>This week</button>
+              <button className="btn" onClick={() => setAnchor(addDays(anchor, 7))} aria-label="Next week">Next ›</button>
+            </>
+          )}
           <div className="tabs inline" role="group" aria-label="View">
             <button className={'tab' + (mode === 'week' ? ' on' : '')} aria-pressed={mode === 'week'} onClick={() => setMode('week')}>Week</button>
             <button className={'tab' + (mode === 'agenda' ? ' on' : '')} aria-pressed={mode === 'agenda'} onClick={() => setMode('agenda')}>Agenda</button>
             <button className={'tab' + (mode === 'month' ? ' on' : '')} aria-pressed={mode === 'month'} onClick={() => setMode('month')}>Month</button>
           </div>
-          <button className="btn ghost" onClick={() => setReview(!review)} aria-expanded={review}>Week in review</button>
+          {mode !== 'month' && <button className="btn ghost" onClick={() => setReview(!review)} aria-expanded={review}>Week in review</button>}
           <button className="btn ghost" onClick={() => downloadText(`petalkeeper-week-${dates[0]}.ics`, buildICS(data.tasks, dates[0], 7, defaultDuration), 'text/calendar')}>Add to calendar (.ics)</button>
           <button className="btn ghost" onClick={() => window.print()}>Print</button>
           <button className="btn primary" onClick={() => openForm(undefined, { date: dates.includes(today) ? today : dates[0], category: 'appointment' })}>＋ Add</button>

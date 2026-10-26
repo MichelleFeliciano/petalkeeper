@@ -54,7 +54,16 @@ export function TaskForm({ task, defaults, occurrenceDate, onClose }: { task?: T
       duration: dur,
       due: due || undefined,
       subtasks: subs,
-      recurrence: freq === 'none' ? undefined : { freq, days: freq === 'days' ? days : undefined, until: until || undefined },
+      recurrence:
+        freq === 'none'
+          ? undefined
+          : {
+              freq,
+              days: freq === 'days' ? days : undefined,
+              until: until || undefined,
+              // keep a day like "the 31st" unless the start date was changed
+              ...(freq === 'monthly' && init.recurrence?.dom && date === (init.date ?? '') ? { dom: init.recurrence.dom } : {}),
+            },
     };
     if (task && occurrenceDate) splitOccurrence(task.id, occurrenceDate, { ...patch, recurrence: undefined });
     else if (task) updateTask(task.id, patch);

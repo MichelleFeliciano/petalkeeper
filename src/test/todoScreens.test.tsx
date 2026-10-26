@@ -139,7 +139,7 @@ describe('Month calendar', () => {
     const { user } = setup('#/path');
     await user.click(screen.getByRole('button', { name: 'Month' }));
     expect(screen.getByRole('region', { name: 'Month calendar' })).toBeInTheDocument();
-    const cell = screen.getByRole('gridcell', { name: new RegExp(`${Number(day.slice(8))}.*open`, 'i') });
+    const cell = screen.getByRole('button', { name: new RegExp(`${Number(day.slice(8))}.*open`, 'i') });
     await user.click(cell);
     expect(within(screen.getByRole('region', { name: 'Month calendar' })).getByText('Calendar thing')).toBeInTheDocument();
   });

@@ -60,6 +60,23 @@ const COALESCE_MS = 300;
 /** how many steps back Undo can go */
 const HISTORY_LIMIT = 50;
 
+/** Undo and Redo bring back tasks, routines and templates only. Everything else (check-offs, notes, counters, settings) stays as it is now. */
+type Part = 'tasks' | 'routines' | 'templates' | 'routineLog';
+interface Entry {
+  /** how things were before the change */
+  d: AppData;
+  /** the parts of the data this step brings back */
+  parts: Part[];
+}
+const TASK_PARTS: Part[] = ['tasks', 'routines', 'templates'];
+/** ticking a routine step off (or skipping it) from the "do this now" card can be undone too, and only that is brought back */
+const ROUTINE_LOG_OPS = new Set(['toggleStep', 'toggleSkipStep']);
+const restore = (e: Entry) => (d: AppData): AppData => {
+  const next = { ...d } as Record<string, unknown>;
+  for (const p of e.parts) next[p] = e.d[p];
+  return next as unknown as AppData;
+};
+
 const Ctx = createContext<Store | null>(null);
 let toastId = 0;
 
@@ -69,8 +86,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [saveFailed, setSaveFailed] = useState(false);
   const [toast, setToast] = useState<Toast | null>(null);
   // Snapshots before each tracked change (past) and the ones undone (future).
-  const past = useRef<AppData[]>([]);
-  const future = useRef<AppData[]>([]);
+  const past = useRef<Entry[]>([]);
+  const future = useRef<Entry[]>([]);
   const snapAt = useRef(0);
   const current = useRef<AppData>(data);
   const [, setHistoryTick] = useState(0);
@@ -105,11 +122,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(t);
   }, [toast]);
 
-  const apply = useCallback((fn: (d: AppData) => AppData, label?: string, tracked = false) => {
+  const apply = useCallback((fn: (d: AppData) => AppData, label?: string, tracked = false, parts: Part[] = TASK_PARTS) => {
     setData((d) => {
       // several changes made together (e.g. Adjust My Day) share one undo step
-      if (tracked && Date.now() - snapAt.current > COALESCE_MS && past.current[past.current.length - 1] !== d) {
-        past.current.push(d);
+      if (tracked && Date.now() - snapAt.current > COALESCE_MS && past.current[past.current.length - 1]?.d !== d) {
+        past.current.push({ d, parts });
         if (past.current.length > HISTORY_LIMIT) past.current.shift();
         future.current = [];
         snapAt.current = Date.now();
@@ -133,7 +150,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const label = UNDOABLE[name];
       const tracked = !!label || QUIET_HISTORY.has(name);
       w[name] = (...args: unknown[]) =>
-        apply((d) => (fn as (d: AppData, ...a: unknown[]) => AppData)(d, ...args), labelOverride.current ?? label, tracked || !!labelOverride.current);
+        apply((d) => (fn as (d: AppData, ...a: unknown[]) => AppData)(d, ...args), labelOverride.current ?? label, tracked || !!labelOverride.current, ROUTINE_LOG_OPS.has(name) ? ['routineLog'] : TASK_PARTS);
     }
     return {
       ...(w as unknown as Wrapped),
@@ -159,8 +176,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       undo: () => {
         const prev = past.current.pop();
         if (prev) {
-          future.current.push(current.current);
-          setData(prev);
+          future.current.push({ d: current.current, parts: prev.parts });
+          setData(restore(prev));
         }
         snapAt.current = 0;
         setHistoryTick((n) => n + 1);
@@ -169,8 +186,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       redo: () => {
         const next = future.current.pop();
         if (next) {
-          past.current.push(current.current);
-          setData(next);
+          past.current.push({ d: current.current, parts: next.parts });
+          setData(restore(next));
         }
         snapAt.current = 0;
         setHistoryTick((n) => n + 1);

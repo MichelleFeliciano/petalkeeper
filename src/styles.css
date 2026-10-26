@@ -394,10 +394,16 @@ details > summary { padding: 0.35rem 0; }
 .month-head { display: flex; align-items: center; gap: 0.5rem; justify-content: space-between; }
 .month-head h2 { margin: 0; flex: 1; text-align: center; }
 .month-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0.25rem; margin: 0.6rem 0; }
-.month-dow { text-align: center; font-weight: 700; color: var(--muted, #6b6b6b); font-size: 0.85rem; }
+.month-dow { text-align: center; font-weight: 700; color: var(--ink-soft); font-size: 0.85rem; }
 .month-day { min-height: 46px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font: inherit; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; }
-.month-day.today { border-color: var(--sage, #7a9a6a); font-weight: 700; }
-.month-day.on { background: var(--sage, #7a9a6a); color: #fff; }
+.month-day.today { border-color: var(--moss); border-width: 2px; font-weight: 700; }
+.month-day.on { background: var(--sage); color: #1f2a1b; }
 .month-day .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 3px; border: 2px solid transparent; }
 .month-day .dot.open { background: currentColor; border-color: currentColor; }
 .month-day .dot.all-done { border-color: currentColor; }
+
+@media (max-width: 760px) {
+  .t-btn { min-height: 40px; }
+  .month-day { min-height: 48px; }
+  .quick-add input, .quick-add select { min-height: 46px; }
+}

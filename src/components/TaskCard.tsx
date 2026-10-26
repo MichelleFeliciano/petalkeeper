@@ -31,8 +31,13 @@ export function TaskCard({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const touch = useRef<{ x: number; y: number } | null>(null);
+  const cancelled = useRef(false);
   const finishRename = () => {
     setEditing(false);
+    if (cancelled.current) {
+      cancelled.current = false;
+      return;
+    }
     const t = draft.trim();
     if (t && t !== task.title) onRename?.(t);
   };
@@ -52,7 +57,7 @@ export function TaskCard({
         if (!t) return;
         const dx = e.changedTouches[0].clientX - t.x;
         const dy = Math.abs(e.changedTouches[0].clientY - t.y);
-        if (dy < 40 && Math.abs(dx) >= 80) onSwipe(dx > 0 ? 'right' : 'left');
+        if (dy < 30 && Math.abs(dx) >= 110) onSwipe(dx > 0 ? 'right' : 'left');
       } : undefined}
     >
       <input
@@ -79,11 +84,14 @@ export function TaskCard({
               onBlur={finishRename}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') finishRename();
-                if (e.key === 'Escape') setEditing(false);
+                if (e.key === 'Escape') {
+                  cancelled.current = true;
+                  setEditing(false);
+                }
               }}
             />
           ) : onRename ? (
-            <button className="t t-btn" onClick={() => { setDraft(task.title); setEditing(true); }} aria-label={`Rename ${task.title}`}>{task.title}</button>
+            <button className="t t-btn" onClick={() => { cancelled.current = false; setDraft(task.title); setEditing(true); }} aria-label={`Rename ${task.title}`}>{task.title}</button>
           ) : (
             <span className="t">{task.title}</span>
           )}

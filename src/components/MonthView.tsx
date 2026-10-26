@@ -41,8 +41,8 @@ export function MonthView() {
         <button className="btn" onClick={() => shift(1)} aria-label="Next month">›</button>
         <button className="btn ghost" onClick={() => { setCursor({ y: Number(today.slice(0, 4)), m: Number(today.slice(5, 7)) - 1 }); setPicked(today); }}>Today</button>
       </div>
-      <div className="month-grid" role="grid" aria-label={title}>
-        {heads.map((h) => <span key={h} className="month-dow" role="columnheader" aria-label={h}>{h.slice(0, 1)}</span>)}
+      <div className="month-grid" role="group" aria-label={title}>
+        {heads.map((h) => <span key={h} className="month-dow" aria-hidden="true">{h.slice(0, 1)}</span>)}
         {cells.map((d, i) => {
           if (!d) return <span key={`b${i}`} />;
           const c = byDay[d];
@@ -50,7 +50,6 @@ export function MonthView() {
           return (
             <button
               key={d}
-              role="gridcell"
               className={'month-day' + (d === today ? ' today' : '') + (d === picked ? ' on' : '')}
               aria-label={label}
               aria-pressed={d === picked}
@@ -69,7 +68,7 @@ export function MonthView() {
           {list.map((o) => <TaskCard key={o.key} occ={o} />)}
         </div>
       ) : (
-        <p className="empty">{picked.startsWith(`${cursor.y}-`) ? `Nothing planned for ${fmtLong(picked)}.` : 'Tap a day to see what is planned.'}</p>
+        <p className="empty">{picked.startsWith(`${cursor.y}-${String(cursor.m + 1).padStart(2, '0')}`) ? `Nothing planned for ${fmtLong(picked)}.` : 'Tap a day to see what is planned.'}</p>
       )}
     </section>
   );

@@ -73,6 +73,7 @@ function NumField({ value, min, step, onCommit }: { value: number; min: number; 
 const JUMPS: [string, string][] = [
   ['pref-h', 'Preferences'],
   ['nt-h', 'Reminders'],
+  ['smt-h', 'Import to-dos'],
   ['cc-h', 'Categories'],
   ['pl-h', 'Places'],
   ['sy-h', 'Sync'],

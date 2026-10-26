@@ -272,3 +272,58 @@ describe('undo steps', () => {
     expect(localStorage.getItem('petalkeeper.v1')).toContain('"done":["');
   });
 });
+
+describe('to-do polish', () => {
+  const mk = (over: Record<string, unknown>) => ({ id: 'x', title: 'T', notes: '', category: 'other', priority: 'normal', subtasks: [], done: false, completions: [], skipped: [], subDone: {}, createdAt: '2026-01-01T00:00:00.000Z', ...over });
+  const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const shift = (n: number) => { const d = new Date(); d.setDate(d.getDate() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
+  const load = (tasks: unknown[], settings: Record<string, unknown> = {}) => {
+    const d = emptyForTest();
+    localStorage.setItem('petalkeeper.v1', JSON.stringify({ ...d, tasks, settings: { ...d.settings, ...settings } }));
+    window.history.pushState({}, '', '/');
+    window.location.hash = '';
+  };
+
+  it('does not repeat late to-dos in "On the horizon" that "Waiting from earlier" already shows', () => {
+    load([mk({ id: 'a', title: 'Late by day', date: shift(-2) }), mk({ id: 'b', title: 'Late by due only', due: shift(-1) }), mk({ id: 'c', title: 'Soon', date: shift(3) })]);
+    render(<App />);
+    const horizon = document.querySelector('ul.horizon') as HTMLElement;
+    expect(within(horizon).getByText('Soon')).toBeInTheDocument();
+    expect(within(horizon).getByText('Late by due only')).toBeInTheDocument();
+    expect(within(horizon).queryByText('Late by day')).not.toBeInTheDocument();
+    expect(screen.getAllByText('Late by day').length).toBe(1); // still shown once, under "Waiting from earlier"
+  });
+
+  it('the daily nudge waits until there is something to say, then goes out once', () => {
+    const calls: unknown[][] = [];
+    const real = globalThis.Notification;
+    class Fake {
+      static permission = 'granted';
+      static requestPermission = async () => 'granted';
+      constructor(...a: unknown[]) { calls.push(a); }
+    }
+    (globalThis as unknown as { Notification: unknown }).Notification = Fake;
+    try {
+      load([], { notifications: true, todoRemindAt: '00:00' });
+      const first = render(<App />);
+      expect(calls).toHaveLength(0);
+      expect(localStorage.getItem('petalkeeper.todoNudgedOn')).toBeNull(); // not used up by an empty list
+      first.unmount();
+      load([mk({ id: 'd', title: 'Due now', date: today() })], { notifications: true, todoRemindAt: '00:00' });
+      render(<App />);
+      expect(calls).toHaveLength(1);
+      expect(localStorage.getItem('petalkeeper.todoNudgedOn')).toBe(today());
+    } finally {
+      (globalThis as unknown as { Notification: unknown }).Notification = real;
+    }
+  });
+
+  it('hand ordering uses a drag handle, so the row itself is not draggable', async () => {
+    load([mk({ id: 'a', title: 'First', date: shift(1) }), mk({ id: 'b', title: 'Second', date: shift(2) })]);
+    localStorage.setItem('petalkeeper.seedsSort', 'manual');
+    window.location.hash = '#/seeds';
+    render(<App />);
+    expect(document.querySelectorAll('.drag-handle[draggable="true"]').length).toBe(2);
+    expect(document.querySelector('.todo-row[draggable="true"]')).toBeNull();
+  });
+});

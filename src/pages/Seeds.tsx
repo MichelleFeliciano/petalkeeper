@@ -131,8 +131,6 @@ export function Seeds() {
           <div
             key={t.id}
             className={'todo-row' + (dropOn === t.id ? ' drop-target' : '')}
-            draggable={manual}
-            onDragStart={() => { dragId.current = t.id; }}
             onDragOver={(e) => { if (manual) { e.preventDefault(); setDropOn(t.id); } }}
             onDragLeave={() => setDropOn((c) => (c === t.id ? null : c))}
             onDrop={() => {
@@ -141,6 +139,11 @@ export function Seeds() {
               dragId.current = null;
             }}
           >
+            {manual && (
+              <span className="drag-handle" draggable onDragStart={() => { dragId.current = t.id; }} title="Drag to move" aria-hidden="true">
+                ⠿ drag
+              </span>
+            )}
             <TaskCard
               occ={{ task: t, date: d, key: t.id }}
               showDate={!!(t.date ?? t.due) && !t.recurrence}

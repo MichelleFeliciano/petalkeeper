@@ -60,9 +60,10 @@ function useReminders() {
       let last: string | null = null;
       try { last = localStorage.getItem(TODO_NUDGE_KEY); } catch { /* not remembered: may nudge again after a reload */ }
       if (last === today) return;
-      try { localStorage.setItem(TODO_NUDGE_KEY, today); } catch { /* ignore */ }
       const n = reminderCount(data.tasks, today);
-      if (n > 0) new Notification('Petalkeeper', { body: reminderText(n), icon: './icon.svg' });
+      if (n === 0) return; // nothing to say yet; look again at the next check
+      try { localStorage.setItem(TODO_NUDGE_KEY, today); } catch { /* ignore */ }
+      new Notification('Petalkeeper', { body: reminderText(n), icon: './icon.svg' });
     };
     const both = () => { tick(); nudge(); };
     both();

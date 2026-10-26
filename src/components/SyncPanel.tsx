@@ -247,7 +247,7 @@ export function SyncPanel() {
               </button>
             </div>
           </form>
-          <p className="hint">The token is stored only in this browser and is never included in backups. Anyone using this browser profile could use it, so only connect on devices you trust.</p>
+          <p className="hint">The token is stored only in this browser and is never included in backups. Anyone using this browser profile could use it, so only connect on devices you trust. Other pages hosted at {window.location.host} share this browser storage too, so only keep pages you trust there.</p>
         </>
       )}
 

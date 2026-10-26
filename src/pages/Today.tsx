@@ -54,6 +54,8 @@ export function Today() {
   // to-dos that are late or fall in the next 7 days (a forward-looking glance; tasks for today are already above)
   const attention = useMemo(() => needsAttention(tasks, today, 7), [tasks, today]);
   const comingUp = attention.soon.filter((t) => (t.date ?? t.due) !== today);
+  // late to-dos that "Waiting from earlier" already lists are not repeated here
+  const lateElsewhere = attention.late.filter((t) => !(t.date && t.date < today));
 
   const now = nowMinutes();
   const next =
@@ -189,13 +191,13 @@ export function Today() {
         </section>
       )}
 
-      {(comingUp.length > 0 || attention.late.length > 0) && (
+      {(comingUp.length > 0 || lateElsewhere.length > 0) && (
         <section aria-labelledby="cu-h">
-          <h2 id="cu-h">On the horizon <small>{attention.late.length > 0 ? `${attention.late.length} late · ` : ''}{comingUp.length} in the next 7 days</small></h2>
+          <h2 id="cu-h">On the horizon <small>{lateElsewhere.length > 0 ? `${lateElsewhere.length} late · ` : ''}{comingUp.length} in the next 7 days</small></h2>
           <ul className="horizon">
-            {[...attention.late, ...comingUp].slice(0, 8).map((t) => (
+            {[...lateElsewhere, ...comingUp].slice(0, 8).map((t) => (
               <li key={t.id}>
-                <a href="#/seeds">{t.title}</a> <span className="meta">{(t.date ?? t.due) ? fmtShort((t.date ?? t.due)!) : ''}{attention.late.includes(t) ? ' · late' : ''}</span>
+                <a href="#/seeds">{t.title}</a> <span className="meta">{(t.date ?? t.due) ? fmtShort((t.date ?? t.due)!) : ''}{lateElsewhere.includes(t) ? ' · late' : ''}</span>
               </li>
             ))}
           </ul>

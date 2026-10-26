@@ -386,7 +386,8 @@ details > summary { padding: 0.35rem 0; }
 .t-btn { font: inherit; background: none; border: 0; color: inherit; cursor: pointer; padding: 0; text-align: left; font-weight: inherit; }
 .t-edit { font: inherit; width: 100%; max-width: 28rem; }
 .todo-tools { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin: 0.4rem 0; }
-.todo-row[draggable='true'] { cursor: grab; }
+.drag-handle { display: inline-block; cursor: grab; user-select: none; font-size: 0.8rem; color: var(--ink-soft); padding: 2px 6px; }
+@media (max-width: 760px) { .drag-handle { display: none; } } /* phones use the arrow buttons */
 .todo-row.drop-target { outline: 2px dashed var(--warn); border-radius: 12px; }
 .snooze { display: inline-flex; gap: 0.3rem; align-items: center; flex-wrap: wrap; }
 

@@ -256,3 +256,19 @@ describe('accessibility of the month view', () => {
     expect(res.violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
   });
 });
+
+describe('undo steps', () => {
+  it('a quick routine tick followed straight away by a task change are two separate steps', async () => {
+    const user = userEvent.setup();
+    window.history.pushState({}, '', '/');
+    window.location.hash = '';
+    render(<App />);
+    await user.click(within(screen.getByRole('region', { name: 'Do this now' })).getByRole('button', { name: /^Done: / }));
+    await goto(user, /Seed Pouch/);
+    await user.type(screen.getByPlaceholderText(/What needs doing/), 'Quick one');
+    await user.click(screen.getByRole('button', { name: 'Add' })); // happens well inside the old 300 ms window on a fast machine
+    await user.click(screen.getByRole('button', { name: /Undo/ }));
+    expect(screen.queryByText('Quick one')).not.toBeInTheDocument(); // the task change is what gets undone
+    expect(localStorage.getItem('petalkeeper.v1')).toContain('"done":["');
+  });
+});

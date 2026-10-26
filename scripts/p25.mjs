@@ -1,0 +1,2 @@
+import { sub } from './lib.mjs';
+sub('src/store.tsx', "      if (tracked && Date.now() - snapAt.current > COALESCE_MS && past.current[past.current.length - 1]?.d !== d) {", "      // only changes to the same kind of thing share a step, so a quick routine tick never swallows a task change\n      const last = past.current[past.current.length - 1];\n      const together = !!last && Date.now() - snapAt.current <= COALESCE_MS && last.parts.join() === parts.join();\n      if (tracked && !together && last?.d !== d) {");

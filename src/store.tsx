@@ -125,7 +125,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const apply = useCallback((fn: (d: AppData) => AppData, label?: string, tracked = false, parts: Part[] = TASK_PARTS) => {
     setData((d) => {
       // several changes made together (e.g. Adjust My Day) share one undo step
-      if (tracked && Date.now() - snapAt.current > COALESCE_MS && past.current[past.current.length - 1]?.d !== d) {
+      // only changes to the same kind of thing share a step, so a quick routine tick never swallows a task change
+      const last = past.current[past.current.length - 1];
+      const together = !!last && Date.now() - snapAt.current <= COALESCE_MS && last.parts.join() === parts.join();
+      if (tracked && !together && last?.d !== d) {
         past.current.push({ d, parts });
         if (past.current.length > HISTORY_LIMIT) past.current.shift();
         future.current = [];

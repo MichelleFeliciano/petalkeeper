@@ -408,3 +408,37 @@ details > summary { padding: 0.35rem 0; }
   .month-day { min-height: 48px; }
   .quick-add input, .quick-add select { min-height: 46px; }
 }
+
+/* v1.7: banners, top bar, search, help, settings check, history */
+.topbar { display: flex; justify-content: flex-end; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin: 0 0 8px; }
+.topbar .sync-chip.top { margin: 0 auto 0 0; }
+.topbar-actions { display: inline-flex; gap: 0.4rem; }
+.banner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.5rem 0.8rem; margin: 0 0 8px; padding: 0.6rem 0.9rem; border-radius: 14px; border: 2px solid var(--moss); background: var(--card); color: var(--ink); }
+.banner.bad { background: var(--warn-bg); color: var(--warn); border-color: var(--warn); }
+.banner-actions { display: inline-flex; gap: 0.4rem; flex-wrap: wrap; }
+.side-version { margin: 4px 12px 12px; font-size: 0.75rem; opacity: 0.85; }
+.results { list-style: none; margin: 0.6rem 0 0; padding: 0; display: grid; gap: 0.35rem; max-height: 55vh; overflow: auto; }
+.result { width: 100%; display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.2rem 0.6rem; text-align: left; min-height: 44px; padding: 0.5rem 0.7rem; border-radius: 12px; border: 1px solid var(--moss); background: var(--card); color: var(--ink); font: inherit; cursor: pointer; }
+.result small { color: var(--ink-soft); }
+.result .detail { flex-basis: 100%; }
+.help-topic { border-bottom: 1px dotted var(--moss); padding: 0.2rem 0; }
+.help-topic summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
+.check { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.check li { display: grid; grid-template-columns: 1.6rem minmax(0, 1fr) auto; gap: 0.5rem; align-items: center; }
+.check .mark { font-weight: 700; text-align: center; }
+.check li.ok .mark { color: var(--ink); }
+.check li.warn .mark { color: var(--warn); }
+.check small { color: var(--ink-soft); }
+.history { margin: 0.5rem 0; padding-left: 1.3rem; }
+.history small { color: var(--ink-soft); }
+.inline-actions { display: inline-flex; gap: 0.4rem; flex-wrap: wrap; }
+.release h3 { margin: 0.6rem 0 0.2rem; font-size: 1rem; }
+.release h3 small { color: var(--ink-soft); font-weight: 400; }
+.release ul { margin: 0 0 0.4rem; padding-left: 1.2rem; }
+.whatsnew { margin-top: 0.6rem; }
+.block { display: block; }
+@media (max-width: 760px) {
+  .side-version { display: none; }
+  .topbar-actions .lbl-s { display: none; }
+  .topbar-actions .btn { min-width: 44px; min-height: 44px; }
+}

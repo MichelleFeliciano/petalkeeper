@@ -170,7 +170,16 @@ export function Today() {
 
       <section aria-labelledby="fl-h">
         <h2 id="fl-h">Flexible tasks <small>do these whenever suits you</small></h2>
-        {flexible.length === 0 ? <p className="empty">No flexible tasks today.</p> : flexible.map((o) => <TaskCard key={o.key} occ={o} />)}
+        {flexible.length === 0 ? (
+          <>
+            <p className="empty">No flexible tasks today.</p>
+            <div className="actions left">
+              <button className="btn" onClick={() => openForm(undefined, { date: today })}>Add one now</button>
+            </div>
+          </>
+        ) : (
+          flexible.map((o) => <TaskCard key={o.key} occ={o} />)
+        )}
       </section>
 
       {earlier.length > 0 && (

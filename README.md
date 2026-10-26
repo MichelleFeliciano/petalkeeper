@@ -151,3 +151,10 @@ Everything lives in the Seed Pouch, The Garden Path and Today; there is no separ
 Differences from Second Memory: a finished repeating to-do there already had its next one made, so it comes in as a plain finished task and the open one repeats; the sort choice and snooze are per device / per task; reminders need the app open.
 
 Code: `src/lib/dateWords.ts`, `src/lib/todo.ts`, `src/lib/secondMemoryImport.ts`, `src/components/TodoQuickAdd.tsx`, `src/components/MonthView.tsx`, `src/components/SecondMemoryTodos.tsx`, `src/store.tsx` (undo/redo). Tests: `src/test/todo.test.ts`, `src/test/todoScreens.test.tsx`.
+
+## v1.7 (2026-10-26)
+- A banner offers new versions by itself; **What's new** notes follow each update (`CHANGELOG.md` and `src/lib/changelog.ts`, kept in step with the version by a test).
+- **Import** checks first, shows counts, adds only what is new, and lists what it skipped. Backup files carry `app`, `appVersion`, `exportedAt` and the format `version`.
+- **Recently deleted** (30 days, this device only), **Undo & history**, and an Undo toast after every delete.
+- **Search** (magnifier or Ctrl+K), **Help**, **Settings check**, a **storage warning**, and "Add one now" on empty screens.
+- The offline cache is named after the app version (the page registers `sw.js?v=<version>`).

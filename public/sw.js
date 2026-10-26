@@ -1,5 +1,6 @@
 // Minimal offline cache: network first, fall back to the cached copy.
-const CACHE = 'petalkeeper-v3';
+// the page registers this file as sw.js?v=<app version>, so the offline copy is always named after the app version
+const CACHE = 'petalkeeper-v' + (new URL(self.location.href).searchParams.get('v') || 'x');
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(['./', './index.html', './icon.svg', './icon-180.png', './favicon.svg'])).then(() => self.skipWaiting()));
 });

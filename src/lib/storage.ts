@@ -271,8 +271,9 @@ export function saveData(data: AppData): boolean {
   }
 }
 
+/** `version` is the file format. The app name, app version and date say where the file came from. */
 export function exportJSON(data: AppData): string {
-  return JSON.stringify(data, null, 2);
+  return JSON.stringify({ app: 'petalkeeper', appVersion: typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : undefined, exportedAt: new Date().toISOString(), ...data }, null, 2);
 }
 
 export function parseImport(text: string): ValidateResult {

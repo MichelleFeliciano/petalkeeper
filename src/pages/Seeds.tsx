@@ -113,6 +113,11 @@ export function Seeds() {
             : 'Nothing here right now. Your garden is at peace.'}
         </p>
       )}
+      {list.length === 0 && !q && (filter === 'all' || filter === 'unscheduled') && (
+        <div className="actions left">
+          <button className="btn primary" onClick={() => openForm()}>Add one now</button>
+        </div>
+      )}
       {list.map((t) => {
         const d = dayOf(t);
         const mover = manual && (

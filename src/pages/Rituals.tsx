@@ -408,7 +408,14 @@ export function Rituals() {
       <RestControls />
       {paused && <p className="hint">Routines are paused, so they're hidden on Today. You can still edit them here.</p>}
       {list.map((r, i) => <RoutineCard key={r.id} routine={r} first={i === 0} last={i === list.length - 1} />)}
-      {list.length === 0 && <p className="empty">No {part.label.toLowerCase()} routine yet. Plant one whenever you like, or start from a ready-made one below.</p>}
+      {list.length === 0 && (
+        <>
+          <p className="empty">No {part.label.toLowerCase()} routine yet. Plant one whenever you like, or start from a ready-made one below.</p>
+          <div className="actions left">
+            <button className="btn" onClick={() => addRoutine(kind, `New ${part.label.toLowerCase()} routine`)}>Add one now</button>
+          </div>
+        </>
+      )}
       <div className="actions left">
         <button className="btn primary" onClick={() => addRoutine(kind, `New ${part.label.toLowerCase()} routine`)}>
           ＋ New {part.label.toLowerCase()} routine

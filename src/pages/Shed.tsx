@@ -11,37 +11,27 @@ import { PlacesPanel } from '../components/PlacesPanel';
 import { SecondMemoryTodos } from '../components/SecondMemoryTodos';
 import { buildRoutineICS } from '../lib/routines';
 import { useSync } from '../sync';
+import { applyUpdate, CACHE_NAME, fetchLatest, isNewer, versionLabel } from '../lib/update';
+import { WhatsNewList } from '../components/Banners';
+import { DeletedPanel, HistoryPanel, ImportCheck, SettingsCheck, type PendingImport } from '../components/DataSafety';
 
-const when = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
-const label = (v: string, build: string) => `v${v} (${when(build)})`;
+const label = versionLabel;
 
 /** Looks for a newer published version; only reloads when there really is one. */
 async function updateApp(setNote: (t: string) => void) {
   const mine = label(__APP_VERSION__, __APP_BUILD__);
   setNote('Checking for a new version…');
-  let latest: { version: string; build: string };
-  try {
-    const res = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
-    if (!res.ok) throw new Error();
-    latest = await res.json();
-  } catch {
+  const latest = await fetchLatest();
+  if (!latest) {
     setNote(`Couldn't check right now. You may be offline. You're on ${mine}.`);
     return;
   }
-  if (latest.build === __APP_BUILD__) {
+  if (!isNewer(latest)) {
     setNote(`You're on the newest version, ${mine}. Nothing to update.`);
     return;
   }
   setNote(`Updating from ${mine} to ${label(latest.version, latest.build)}…`);
-  try {
-    const reg = await navigator.serviceWorker?.getRegistration();
-    await reg?.unregister();
-    for (const k of await caches.keys()) await caches.delete(k);
-  } catch {
-    /* unsupported: a plain reload still fetches the new files */
-  }
-  await new Promise((r) => setTimeout(r, 1200));
-  location.reload();
+  await applyUpdate();
 }
 
 /** A number box that lets you clear it and type a new value; it only commits a valid number. */
@@ -71,6 +61,7 @@ function NumField({ value, min, step, onCommit }: { value: number; min: number; 
 }
 
 const JUMPS: [string, string][] = [
+  ['chk-h', 'Check'],
   ['pref-h', 'Preferences'],
   ['nt-h', 'Reminders'],
   ['smt-h', 'Import to-dos'],
@@ -79,6 +70,8 @@ const JUMPS: [string, string][] = [
   ['sy-h', 'Sync'],
   ['dv-h', 'This device'],
   ['bk-h', 'Backup'],
+  ['hx-h', 'History'],
+  ['tr-h', 'Deleted'],
   ['up-h', 'Updates'],
   ['rs-h', 'Start fresh'],
 ];
@@ -106,6 +99,7 @@ export function Shed() {
   const [cat, setCat] = useState({ label: '', icon: '🌸', color: '#E8B8C4' });
   const [permMsg, setPermMsg] = useState('');
   const [updNote, setUpdNote] = useState('');
+  const [pending, setPending] = useState<PendingImport | null>(null);
 
   const toggleNotifications = async (on: boolean) => {
     setPermMsg('');
@@ -129,10 +123,22 @@ export function Shed() {
   };
 
   const importFile = async (file: File) => {
-    const res = parseImport(await file.text());
+    const text = await file.text();
+    let meta: { app?: unknown; appVersion?: unknown; exportedAt?: unknown } = {};
+    try {
+      meta = JSON.parse(text) ?? {};
+    } catch {
+      /* parseImport explains it */
+    }
+    if (typeof meta.app === 'string' && meta.app !== 'petalkeeper') return setMsg({ ok: false, text: `That file is from ${meta.app}, not Petalkeeper. Your current data was not changed.` });
+    const res = parseImport(text);
     if (!res.ok) return setMsg({ ok: false, text: `${res.error} Your current data was not changed.` });
-    s.replaceAll(res.data);
-    setMsg({ ok: true, text: `Restored ${res.data.tasks.length} activities and ${res.data.routines.length} routines.` });
+    const from = [
+      typeof meta.appVersion === 'string' ? `made by Petalkeeper v${meta.appVersion}` : '',
+      typeof meta.exportedAt === 'string' && !Number.isNaN(Date.parse(meta.exportedAt)) ? `saved ${new Date(meta.exportedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}` : '',
+    ].filter(Boolean).join(', ');
+    setMsg(null);
+    setPending({ data: res.data, from, fileName: file.name });
   };
 
   return (
@@ -143,6 +149,8 @@ export function Shed() {
       </header>
 
       <JumpBar />
+
+      <SettingsCheck />
 
       <section className="card form" aria-labelledby="pref-h">
         <h2 id="pref-h">Preferences</h2>
@@ -260,7 +268,7 @@ export function Shed() {
         </p>
         <div className="actions left">
           <button className="btn primary" onClick={exportNow}>Export backup (JSON)</button>
-          <button className="btn" onClick={() => fileRef.current?.click()}>Import backup…</button>
+          <button className="btn" onClick={() => fileRef.current?.click()}>Import backup (check first)…</button>
           <button className="btn" onClick={() => downloadText('petalkeeper-calendar.ics', buildICS(s.data.tasks, todayISO(), 90, settings.defaultDuration), 'text/calendar')}>Export next 90 days (.ics)</button>
           <button
             className="btn"
@@ -291,6 +299,10 @@ export function Shed() {
         {s.saveFailed && <p className="error" role="alert">This browser couldn't save your data (private mode or full storage). Please export a backup.</p>}
       </section>
 
+      <HistoryPanel />
+
+      <DeletedPanel />
+
       <section className="card" aria-labelledby="up-h">
         <h2 id="up-h">App updates</h2>
         <p>
@@ -300,6 +312,8 @@ export function Shed() {
           <button className="btn primary" onClick={() => void updateApp(setUpdNote)}>Update app</button>
         </div>
         {updNote && <p role="status" aria-live="polite" className="ok-msg">{updNote}</p>}
+        <p className="hint">Last updated {new Date(__APP_BUILD__).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}. Offline copy: {CACHE_NAME}. A banner also appears by itself when a newer version is ready.</p>
+        <WhatsNewList />
       </section>
 
       <section className="card" aria-labelledby="rs-h">
@@ -309,6 +323,17 @@ export function Shed() {
           <button className="btn danger" onClick={() => setConfirm('all')}>Erase all my data</button>
         </div>
       </section>
+
+      {pending && (
+        <ImportCheck
+          pending={pending}
+          onClose={() => setPending(null)}
+          onDone={(text) => {
+            setPending(null);
+            setMsg({ ok: true, text });
+          }}
+        />
+      )}
 
       {confirm && (
         <Modal title={confirm === 'all' ? 'Erase everything?' : 'Reset to sample data?'} onClose={() => setConfirm(null)}>

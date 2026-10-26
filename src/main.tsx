@@ -12,6 +12,6 @@ createRoot(document.getElementById('root')!).render(
 // Offline support + installability (production builds only)
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    navigator.serviceWorker.register(`./sw.js?v=${__APP_VERSION__}`).catch(() => {});
   });
 }

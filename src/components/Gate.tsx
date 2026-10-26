@@ -59,8 +59,17 @@ export function LockGate({ children }: { children: ReactNode }) {
 export function Tour() {
   const { resetEverything } = useStore();
   const [open, setOpen] = useState(() => !tourSeen());
-  // only offer this when the app is showing its built-in examples (not data that arrived from another device)
-  const examples = isFreshSample() && !loadSyncConfig();
+  const [replay, setReplay] = useState(false);
+  useEffect(() => {
+    const again = () => {
+      setReplay(true);
+      setOpen(true);
+    };
+    window.addEventListener('petalkeeper:tour', again);
+    return () => window.removeEventListener('petalkeeper:tour', again);
+  }, []);
+  // only offer this when the app is showing its built-in examples (not data that arrived from another device), and never when it is shown again later
+  const examples = !replay && isFreshSample() && !loadSyncConfig();
   if (!open) return null;
   const close = () => {
     markTourSeen();

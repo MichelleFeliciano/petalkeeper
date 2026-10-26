@@ -17,6 +17,9 @@ import { Path } from './pages/Path';
 import { Seeds } from './pages/Seeds';
 import { Shed } from './pages/Shed';
 import { Journal } from './pages/Journal';
+import { StorageBanner, UpdateBanner, WhatsNewBanner } from './components/Banners';
+import { HelpModal, SearchModal } from './components/Finder';
+import { versionLabel } from './lib/update';
 
 const PAGES = [
   { id: 'today', label: "Today's Garden", short: 'Today', sub: 'Your day', icon: '🌼' },
@@ -179,6 +182,21 @@ function Shell() {
     window.scrollTo?.(0, 0);
   };
   useShareTarget(go);
+  const [finder, setFinder] = useState<'search' | 'help' | null>(null);
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setFinder('search');
+      }
+    };
+    window.addEventListener('keydown', on);
+    return () => window.removeEventListener('keydown', on);
+  }, []);
+  const openBackup = () => {
+    go('shed');
+    setTimeout(() => document.getElementById('bk-h')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }), 50);
+  };
 
   return (
     <div className="app">
@@ -209,9 +227,19 @@ function Shell() {
           ))}
         </nav>
         <SyncChip variant="side" onOpen={() => go('shed')} />
+        <p className="side-version">{versionLabel(__APP_VERSION__, __APP_BUILD__)}</p>
       </aside>
       <main id="main" tabIndex={-1}>
-        <SyncChip variant="top" onOpen={() => go('shed')} />
+        <div className="topbar">
+          <SyncChip variant="top" onOpen={() => go('shed')} />
+          <span className="topbar-actions">
+            <button className="btn ghost small" onClick={() => setFinder('search')} aria-label="Search" title="Search (Ctrl+K)">🔍 <span className="lbl-s">Search</span></button>
+            <button className="btn ghost small" onClick={() => setFinder('help')} aria-label="Help">❓ <span className="lbl-s">Help</span></button>
+          </span>
+        </div>
+        <UpdateBanner />
+        <WhatsNewBanner />
+        <StorageBanner onOpen={openBackup} />
         <OfflineNote />
         {page === 'today' && <Today />}
         {page === 'rituals' && <Rituals />}
@@ -222,6 +250,8 @@ function Shell() {
       </main>
       <ToastBar />
       <Tour />
+      {finder === 'search' && <SearchModal onClose={() => setFinder(null)} onGo={go} />}
+      {finder === 'help' && <HelpModal onClose={() => setFinder(null)} onWelcome={() => window.dispatchEvent(new Event('petalkeeper:tour'))} />}
     </div>
   );
 }

@@ -25,7 +25,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
         <Modal title="Remove this?" onClose={() => setDel(null)}>
           <p>
             <strong>{del.task.title}</strong>
-            {del.task.recurrence ? ' repeats. What would you like to remove?' : ' will be removed for good.'}
+            {del.task.recurrence ? ' repeats. What would you like to remove?' : ' will be removed. You can bring it back from Recently deleted in the Garden Shed for 30 days.'}
           </p>
           <div className="actions">
             <button className="btn" onClick={() => setDel(null)}>

@@ -75,6 +75,8 @@ export interface Task {
   /** per-date subtask completion for recurring tasks */
   subDone: Record<string, string[]>;
   createdAt: string;
+  /** which days (or "once") already earned a bloom, so ticking something off and on again doesn't earn more */
+  bloomed?: string[];
   /** place in a hand-arranged list ("My order" in the Seed Pouch); missing until the list is arranged */
   order?: number;
 }
@@ -129,6 +131,8 @@ export interface RoutineDay {
   /** optional timing: ISO timestamps from the Start and Finished buttons */
   start?: string;
   end?: string;
+  /** step ids that already earned a bloom today */
+  bloomed?: string[];
 }
 export type RoutineLog = Record<string, Record<string, RoutineDay>>; // date -> routineId -> day
 

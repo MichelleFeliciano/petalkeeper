@@ -12,6 +12,35 @@ export interface Hit {
 
 const MAX_PER_KIND = 8;
 
+/** the last few things searched for, kept on this device only */
+const RECENT_KEY = 'petalkeeper.recentSearches';
+export function loadRecentSearches(): string[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(RECENT_KEY) ?? '[]');
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string').slice(0, 6) : [];
+  } catch {
+    return [];
+  }
+}
+export function rememberSearch(q: string): string[] {
+  const t = q.trim();
+  if (t.length < 2) return loadRecentSearches();
+  const next = [t, ...loadRecentSearches().filter((x) => x.toLowerCase() !== t.toLowerCase())].slice(0, 6);
+  try {
+    localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+  } catch {
+    /* just not remembered */
+  }
+  return next;
+}
+export function clearRecentSearches() {
+  try {
+    localStorage.removeItem(RECENT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 export function searchAll(d: AppData, query: string): Hit[] {
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
   if (!words.length) return [];

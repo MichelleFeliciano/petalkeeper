@@ -188,6 +188,11 @@ function Shell() {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setFinder('search');
+      } else if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        // only when you aren't typing in a box or looking at a dialog
+        if ((e.target as HTMLElement | null)?.closest?.('input, textarea, select, [contenteditable]') || document.querySelector('[role="dialog"]')) return;
+        e.preventDefault();
+        setFinder('search');
       }
     };
     window.addEventListener('keydown', on);
@@ -233,7 +238,7 @@ function Shell() {
         <div className="topbar">
           <SyncChip variant="top" onOpen={() => go('shed')} />
           <span className="topbar-actions">
-            <button className="btn ghost small" onClick={() => setFinder('search')} aria-label="Search" title="Search (Ctrl+K)">🔍 <span className="lbl-s">Search</span></button>
+            <button className="btn ghost small" onClick={() => setFinder('search')} aria-label="Search" title="Search (Ctrl+K or /)">🔍 <span className="lbl-s">Search</span></button>
             <button className="btn ghost small" onClick={() => setFinder('help')} aria-label="Help">❓ <span className="lbl-s">Help</span></button>
           </span>
         </div>

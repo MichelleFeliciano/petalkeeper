@@ -18,6 +18,7 @@ function validTask(t: unknown): t is Task {
   if (!optDate(t.date) || !optDate(t.due) || !optTime(t.start) || !optTime(t.end)) return false;
   if (t.duration !== undefined && (typeof t.duration !== 'number' || t.duration < 0)) return false;
   if (typeof t.done !== 'boolean' || !isStr(t.createdAt)) return false;
+  if (t.bloomed !== undefined && !(Array.isArray(t.bloomed) && t.bloomed.every(isStr))) return false;
   if (t.order !== undefined && (typeof t.order !== 'number' || !Number.isFinite(t.order))) return false;
   if (!Array.isArray(t.subtasks) || !t.subtasks.every((s) => isObj(s) && isStr(s.id) && isStr(s.title) && typeof s.done === 'boolean')) return false;
   if (!Array.isArray(t.completions) || !t.completions.every(isISODate)) return false;
@@ -52,6 +53,7 @@ export type ValidateResult = { ok: true; data: AppData } | { ok: false; error: s
 /** Returns a cleaned AppData or an error message. Never throws. */
 export function validateData(raw: unknown): ValidateResult {
   if (!isObj(raw)) return { ok: false, error: 'That file is not a Petalkeeper backup.' };
+  if (typeof raw.version === 'number' && raw.version > 1) return { ok: false, error: 'That file was made by a newer version of Petalkeeper. Update the app (Garden Shed → Update app), then try again.' };
   if (raw.version !== 1) return { ok: false, error: 'Unsupported backup version.' };
   if (!Array.isArray(raw.tasks) || !raw.tasks.every(validTask)) return { ok: false, error: 'Some tasks in the file are malformed.' };
   if (!Array.isArray(raw.routines)) return { ok: false, error: 'Routines are missing or malformed.' };
@@ -69,6 +71,7 @@ export function validateData(raw: unknown): ValidateResult {
         skipped: Array.isArray(day.skipped) ? day.skipped.filter(isStr) : [],
         ...(isStr(day.start) ? { start: day.start } : {}),
         ...(isStr(day.end) ? { end: day.end } : {}),
+        ...(Array.isArray(day.bloomed) ? { bloomed: day.bloomed.filter(isStr) } : {}),
       };
     }
     routineLog[date] = row;

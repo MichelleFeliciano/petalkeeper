@@ -7,7 +7,10 @@ import { countdownText, daysUntil, lastDoneLabel } from '../lib/journal';
 import { useAutosave } from '../lib/useAutosave';
 import { clearCorruptCopy, corruptCopy, salvage } from '../lib/storage';
 import { downloadText } from '../lib/ics';
-import { addDays, fmtTime } from '../lib/dates';
+import { describeCounts, mergeImport, totalAdded } from '../lib/merge';
+import { addDays, fmtTime, weekDates, weekday } from '../lib/dates';
+import { weekSummary } from '../lib/summary';
+import { needsAttention, snoozeTo } from '../lib/todo';
 import { itemsOn } from '../lib/schedule';
 import { PARTS, MOODS, currentPart, partOf } from '../lib/types';
 
@@ -309,9 +312,61 @@ export function TomorrowPreview() {
   );
 }
 
+const REVIEW_KEY = 'petalkeeper.weekReviewed';
+
+/** On the last day of the week and the first day of the next: a kind look back, and one tap to put late to-dos off for a week. */
+export function WeeklyReview() {
+  const { data, today, snoozeTask } = useStore();
+  const { weekStart } = data.settings;
+  const [hidden, setHidden] = useState(() => {
+    try {
+      return localStorage.getItem(REVIEW_KEY) === today;
+    } catch {
+      return false;
+    }
+  });
+  const dow = weekday(today);
+  const looksBack = dow === weekStart;
+  if (hidden || (dow !== (weekStart + 6) % 7 && !looksBack)) return null;
+  const w = weekSummary(data, weekDates(looksBack ? addDays(today, -7) : today, weekStart));
+  if (w.total === 0 && w.routineSteps === 0) return null;
+  const late = needsAttention(data.tasks, today, 7).late;
+  const done = () => {
+    try {
+      localStorage.setItem(REVIEW_KEY, today);
+    } catch {
+      /* it just shows again next time */
+    }
+    setHidden(true);
+  };
+  return (
+    <section className="card" aria-labelledby="wr-h">
+      <h2 id="wr-h">A look at {looksBack ? 'last week' : 'this week'}</h2>
+      <p>
+        {w.done} of {w.total} activities tended{w.routineSteps > 0 ? ', and ' + w.routineSteps + ' routine steps' : ''}. {w.message}
+      </p>
+      {late.length > 0 && <p className="meta">{late.length} to-do{late.length === 1 ? ' is' : 's are'} still waiting from before today.</p>}
+      <div className="actions left">
+        {late.length > 0 && (
+          <button
+            className="btn"
+            onClick={() => {
+              for (const t of late) snoozeTask(t.id, t.date ?? t.due ?? today, snoozeTo(today, 'week'));
+              done();
+            }}
+          >
+            Put {late.length === 1 ? 'it' : 'all ' + late.length} off for a week
+          </button>
+        )}
+        <button className="btn ghost" onClick={done}>Done for now</button>
+      </div>
+    </section>
+  );
+}
+
 /** Shown only if saved data couldn't be read at some point and a copy was kept. */
 export function DamagedDataBanner() {
-  const { replaceAll, notify } = useStore();
+  const { data, replaceAll, notify } = useStore();
   const [copy, setCopy] = useState(corruptCopy);
   if (!copy) return null;
   return (
@@ -325,10 +380,12 @@ export function DamagedDataBanner() {
           onClick={() => {
             const rescued = salvage(copy);
             if (!rescued) return notify("Couldn't rescue anything from it.");
-            replaceAll(rescued);
+            // add what was readable to what is here now; nothing you have is replaced
+            const { data: merged, report } = mergeImport(data, rescued);
+            if (totalAdded(report) > 0) replaceAll(merged);
             clearCorruptCopy();
             setCopy(null);
-            notify(`Brought back ${rescued.tasks.length} activities and ${rescued.routines.length} routines.`);
+            notify(totalAdded(report) > 0 ? `Brought back ${describeCounts(report.added)}.` : 'Everything readable was already here.');
           }}
         >
           Try to bring it back

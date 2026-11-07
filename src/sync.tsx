@@ -54,6 +54,16 @@ export interface SyncApi {
 
 const Ctx = createContext<SyncApi | null>(null);
 
+/** data that arrives from the cloud keeps this device's own reminder switch and place */
+const keepDevice = (from: AppData, local: AppData): AppData => ({
+  ...from,
+  settings: {
+    ...from.settings,
+    notifications: local.settings.notifications,
+    place: from.settings.places.some((p) => p.id === local.settings.place) ? local.settings.place : from.settings.place,
+  },
+});
+
 const message = (e: unknown) => (e instanceof SyncError ? e.message : 'Something went wrong while syncing.');
 
 export function SyncProvider({ children }: { children: ReactNode }) {
@@ -155,7 +165,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       const { cfg, remote } = pending;
       const local = dataRef.current;
       if (choice === 'cloud') {
-        const next = { ...remote, settings: { ...remote.settings, notifications: local.settings.notifications } };
+        const next = keepDevice(remote, local);
         replaceAll(next);
         finish(cfg, next);
       } else if (choice === 'device') {
@@ -198,7 +208,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     restore: async (sha) => {
       if (!config) return;
       const old = await getVersion(config, sha);
-      const next = { ...old, settings: { ...old.settings, notifications: dataRef.current.settings.notifications } };
+      const next = keepDevice(old, dataRef.current);
       await pushReplace(config, next);
       replaceAll(next);
       baseRef.current = next;

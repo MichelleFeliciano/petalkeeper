@@ -1,5 +1,6 @@
 import { addDays, fromISO } from './dates';
 import { routineOn } from './schedule';
+import { foldLine } from './ics';
 import type { AppData, PartOfDay, Routine, RoutineStep, Settings } from './types';
 
 /* ---------- pausing and gentle days ---------- */
@@ -184,5 +185,5 @@ export function buildRoutineICS(routines: Routine[], fromDate: string): { text: 
     );
   }
   lines.push('END:VCALENDAR');
-  return { text: lines.join('\r\n') + '\r\n', count };
+  return { text: lines.map(foldLine).join('\r\n') + '\r\n', count };
 }

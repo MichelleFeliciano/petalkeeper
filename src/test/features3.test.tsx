@@ -155,7 +155,7 @@ describe('v1.5 screens', () => {
     localStorage.setItem('petalkeeper.v1.corrupt', JSON.stringify(damaged));
     render(<App />);
     await user.click(screen.getByRole('button', { name: 'Try to bring it back' }));
-    expect(screen.getByText(/Brought back 1 activities/)).toBeInTheDocument();
+    expect(screen.getByText(/Brought back 1 activity/)).toBeInTheDocument();
     expect(localStorage.getItem('petalkeeper.v1.corrupt')).toBeNull();
     expect(localStorage.getItem('petalkeeper.v1')).toContain('Rescued task');
   });

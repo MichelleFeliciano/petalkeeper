@@ -188,7 +188,7 @@ function RoutineCard({ routine, first, last }: { routine: Routine; first: boolea
     <section className="card routine" aria-label={routine.name}>
       <div className="routine-head">
         {editing ? (
-          <input aria-label="Routine name" value={routine.name} onChange={(e) => s.renameRoutine(routine.id, e.target.value)} />
+          <input aria-label="Routine name" value={routine.name} onChange={(e) => s.renameRoutine(routine.id, e.target.value)} onBlur={() => !routine.name.trim() && s.renameRoutine(routine.id, 'Untitled routine')} />
         ) : (
           <h2>{routine.name}</h2>
         )}

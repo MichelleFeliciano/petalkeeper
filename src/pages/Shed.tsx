@@ -222,6 +222,10 @@ export function Shed() {
         )}
         {permMsg && <p className="error" role="alert">{permMsg}</p>}
         <p className="hint">Reminders only appear while Petalkeeper is open in a browser tab. If it's closed, nothing can be delivered. Everything works fine with reminders off.</p>
+        <p className="hint">
+          Want reminders even when the app is closed? Export your routine nudges below and open the file on your phone: your phone's own calendar sends them.{' '}
+          <button className="btn small" onClick={() => document.getElementById('bk-h')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>Go to the calendar export</button>
+        </p>
       </section>
 
       <SecondMemoryTodos />

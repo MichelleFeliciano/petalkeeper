@@ -8,8 +8,9 @@ import type { AppData } from '../lib/types';
 const when = (iso: string) => (iso ? new Date(iso).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'unknown time');
 
 /** Encryption and going back to an earlier saved version. */
-function PrivacyAndHistory({ run, busy, err }: { run: (fn: () => Promise<unknown>) => Promise<void>; busy: boolean; err: string }) {
+function PrivacyAndHistory() {
   const sync = useSync();
+  const { run, busy, err } = useRun();
   const [pass, setPass] = useState('');
   const [again, setAgain] = useState('');
   const [list, setList] = useState<Version[] | null>(null);
@@ -94,9 +95,28 @@ function PrivacyAndHistory({ run, busy, err }: { run: (fn: () => Promise<unknown
 
 const errText = (e: unknown) => (e instanceof Error ? e.message : 'Something went wrong.');
 
+/** runs one action, with its own busy flag and error message so panels don't show each other's problems */
+function useRun() {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const run = async (fn: () => Promise<unknown>) => {
+    setBusy(true);
+    setErr('');
+    try {
+      await fn();
+    } catch (e) {
+      setErr(errText(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return { busy, err, run };
+}
+
 /** When the access token runs out, and a way to swap in a new one without disconnecting. */
-function TokenInfo({ run, busy, err }: { run: (fn: () => Promise<unknown>) => Promise<void>; busy: boolean; err: string }) {
+function TokenInfo() {
   const sync = useSync();
+  const { run, busy, err } = useRun();
   const { today } = useStore();
   const [token, setToken] = useState('');
   const [exp, setExp] = useState('');
@@ -146,21 +166,8 @@ export function SyncPanel() {
   const [token, setToken] = useState('');
   const [passphrase, setPassphrase] = useState('');
   const [expires, setExpires] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
+  const { busy, err, run } = useRun();
   const [confirmOff, setConfirmOff] = useState(false);
-
-  const run = async (fn: () => Promise<unknown>) => {
-    setBusy(true);
-    setErr('');
-    try {
-      await fn();
-    } catch (e) {
-      setErr(errText(e));
-    } finally {
-      setBusy(false);
-    }
-  };
 
   return (
     <section className="card form" aria-labelledby="sy-h">
@@ -188,8 +195,8 @@ export function SyncPanel() {
               Disconnect this device
             </button>
           </div>
-          <TokenInfo run={run} busy={busy} err={err} />
-          <PrivacyAndHistory run={run} busy={busy} err={err} />
+          <TokenInfo />
+          <PrivacyAndHistory />
           <p className="hint">
             Disconnecting keeps everything on this device and forgets the access token. Edits from different devices are combined; if the same item was changed on two devices at once, this device's version is kept.
           </p>

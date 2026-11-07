@@ -36,6 +36,7 @@ export function duplicateTask(d: AppData, id: string): AppData {
     completions: [],
     skipped: [],
     subDone: {},
+    bloomed: undefined,
     subtasks: t.subtasks.map((s) => ({ ...s, id: newId(), done: false })),
   };
   return addTask(d, copy);
@@ -46,12 +47,16 @@ export function toggleDone(d: AppData, id: string, date: string): AppData {
   const t = d.tasks.find((x) => x.id === id);
   if (!t) return d;
   const was = isDone(t, date);
+  // a bloom is earned the first time something is finished, so ticking it off and on again doesn't grow the garden
+  const key = t.recurrence ? date : 'once';
+  const first = !was && !(t.bloomed ?? []).includes(key);
+  const earned = first ? { bloomed: [...(t.bloomed ?? []), key] } : {};
   const next = mapTask(d, id, (x) =>
     x.recurrence
-      ? { ...x, completions: was ? x.completions.filter((c) => c !== date) : [...x.completions, date] }
-      : { ...x, done: !was },
+      ? { ...x, ...earned, completions: was ? x.completions.filter((c) => c !== date) : [...x.completions, date] }
+      : { ...x, ...earned, done: !was },
   );
-  return was ? next : { ...next, blooms: next.blooms + 1 };
+  return first ? { ...next, blooms: next.blooms + 1 } : next;
 }
 
 export function toggleSubtask(d: AppData, id: string, date: string, subId: string): AppData {
@@ -98,6 +103,7 @@ export function moveOccurrence(d: AppData, id: string, fromDate: string, to: Mov
     completions: [],
     skipped: [],
     subDone: {},
+    bloomed: undefined,
     subtasks: t.subtasks.map((s) => ({ ...s, id: newId(), done: false })),
     ...timing,
   };
@@ -113,6 +119,7 @@ export function copyDay(d: AppData, from: string, to: string): AppData {
       id: newId(),
       date: to,
       done: false,
+      bloomed: undefined,
       subtasks: t.subtasks.map((s) => ({ ...s, id: newId(), done: false })),
     }));
   return { ...d, tasks: [...d.tasks, ...copies] };
@@ -168,17 +175,21 @@ function setRoutineDay(d: AppData, date: string, rid: string, day: RoutineDay): 
 export function toggleStep(d: AppData, date: string, rid: string, stepId: string): AppData {
   const day = routineDay(d, date, rid);
   const was = day.done.includes(stepId);
+  const first = !was && !(day.bloomed ?? []).includes(stepId);
   const next = setRoutineDay(d, date, rid, {
+    ...day, // keeps the Start and Finished times
     done: was ? day.done.filter((s) => s !== stepId) : [...day.done, stepId],
     skipped: day.skipped.filter((s) => s !== stepId),
+    ...(first ? { bloomed: [...(day.bloomed ?? []), stepId] } : {}),
   });
-  return was ? next : { ...next, blooms: next.blooms + 1 };
+  return first ? { ...next, blooms: next.blooms + 1 } : next;
 }
 
 export function toggleSkipStep(d: AppData, date: string, rid: string, stepId: string): AppData {
   const day = routineDay(d, date, rid);
   const was = day.skipped.includes(stepId);
   return setRoutineDay(d, date, rid, {
+    ...day,
     done: day.done.filter((s) => s !== stepId),
     skipped: was ? day.skipped.filter((s) => s !== stepId) : [...day.skipped, stepId],
   });
@@ -202,6 +213,7 @@ export function splitOccurrence(d: AppData, id: string, date: string, patch: Par
     completions: [],
     skipped: [],
     subDone: {},
+    bloomed: undefined,
     subtasks: (patch.subtasks ?? t.subtasks).map((s) => ({ ...s, id: newId(), done: false })),
   };
   return addTask(skipped, copy);

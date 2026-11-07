@@ -6,7 +6,7 @@ import { AdjustDay } from '../components/AdjustDay';
 import { TimeBlocks } from '../components/TimeBlocks';
 import { TemplatesModal } from '../components/TemplatesModal';
 import { Fairy, GardenStrip, type Pose } from '../components/Fairy';
-import { AsNeeded, Countdowns, DamagedDataBanner, DoNow, TodaysRoutines, TomorrowPreview, Counters, CheckIn } from '../components/DailyExtras';
+import { AsNeeded, Countdowns, DamagedDataBanner, DoNow, TodaysRoutines, TomorrowPreview, Counters, CheckIn, WeeklyReview } from '../components/DailyExtras';
 import { PlaceSwitcher } from '../components/Controls';
 import { findConflicts, isDone, itemsOn } from '../lib/schedule';
 import { addDays, fmtDuration, fmtLong, fmtShort, fmtTime, fromISO, nowMinutes, toMinutes } from '../lib/dates';
@@ -123,6 +123,8 @@ export function Today() {
       <TodaysRoutines />
 
       <TomorrowPreview />
+
+      <WeeklyReview />
 
       <AsNeeded />
 

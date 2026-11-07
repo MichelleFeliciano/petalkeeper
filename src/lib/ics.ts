@@ -8,6 +8,26 @@ const esc = (s: string) =>
     .split(';').join('\\;')
     .split(',').join('\\,')
     .split(/\r?\n/).join('\\n');
+/** Lines over 75 bytes continue on the next line, which starts with a space (RFC 5545), so long notes survive every calendar app. */
+export function foldLine(line: string): string {
+  const enc = new TextEncoder();
+  let out = '';
+  let cur = '';
+  let bytes = 0;
+  let limit = 75;
+  for (const ch of line) {
+    const n = enc.encode(ch).length;
+    if (bytes + n > limit) {
+      out += cur + '\r\n ';
+      cur = '';
+      bytes = 0;
+      limit = 74;
+    }
+    cur += ch;
+    bytes += n;
+  }
+  return out + cur;
+}
 const d8 = (iso: string) => iso.split('-').join('');
 const t6 = (hhmm: string) => hhmm.replace(':', '') + '00';
 const hhmm = (min: number) => {
@@ -35,7 +55,7 @@ export function buildICS(tasks: Task[], from: string, days: number, defaultDurat
     }
   }
   lines.push('END:VCALENDAR');
-  return lines.join('\r\n') + '\r\n';
+  return lines.map(foldLine).join('\r\n') + '\r\n';
 }
 
 export function downloadText(name: string, text: string, type: string) {

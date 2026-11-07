@@ -8,6 +8,21 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.8.0',
+    date: '2026-11-07',
+    notes: [
+      'A weekly look back on the last day of the week and the first day of the next, with one tap to put late to-dos off for a week.',
+      'Search opens with "/" too, and remembers your recent searches on this device.',
+      'The damaged-data rescue now adds what it finds instead of replacing what you have.',
+      'Which place you are at is now remembered separately on each device. Planned stays still sync.',
+      'Blooms are earned the first time something is finished, so ticking it off and on again no longer adds more.',
+      'Ticking a routine step no longer erases its Start and Finished times.',
+      'Calendar (.ics) files wrap long lines so long notes survive every calendar app.',
+      'A backup from a newer version of Petalkeeper says so. A routine with an empty name becomes "Untitled routine".',
+      'Each sync panel shows only its own error. Reminders explain how to get phone-calendar reminders when the app is closed.',
+    ],
+  },
+  {
     version: '1.7.1',
     date: '2026-11-07',
     notes: [

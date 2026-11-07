@@ -83,8 +83,8 @@ export function stable(x: unknown): string {
   );
 }
 const eq = (a: unknown, b: unknown) => stable(a) === stable(b);
-/** the copy stored in the cloud never carries per-device settings */
-export const forCloud = (d: AppData): AppData => ({ ...d, settings: { ...d.settings, notifications: false } });
+/** the copy stored in the cloud never carries per-device settings (reminders on/off, which place you are at) */
+export const forCloud = (d: AppData): AppData => ({ ...d, settings: { ...d.settings, notifications: false, place: d.settings.places[0]?.id ?? d.settings.place } });
 
 function mergeMaps<T>(
   base: Map<string, T>,
@@ -126,7 +126,7 @@ function flattenLog(d: AppData | null): Map<string, RoutineDay> {
 const settingsMap = (d: AppData | null) => new Map<string, unknown>(d ? Object.entries(d.settings) : []);
 
 /** Settings that only make sense on one device */
-const LOCAL_ONLY = new Set(['notifications']);
+const LOCAL_ONLY = new Set(['notifications', 'place']);
 
 /** Three-way merge. `base` is the copy both devices last agreed on (null on first sync). */
 export function mergeData(base: AppData | null, local: AppData, remote: AppData): AppData {
@@ -140,6 +140,7 @@ export function mergeData(base: AppData | null, local: AppData, remote: AppData)
       skipped: [...new Set([...l.skipped, ...r.skipped])].filter((s) => !done.includes(s)),
       ...(l.start ?? r.start ? { start: l.start ?? r.start } : {}),
       ...(l.end ?? r.end ? { end: l.end ?? r.end } : {}),
+      ...(l.bloomed || r.bloomed ? { bloomed: [...new Set([...(l.bloomed ?? []), ...(r.bloomed ?? [])])] } : {}),
     };
   });
   const routineLog: AppData['routineLog'] = {};

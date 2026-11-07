@@ -2,6 +2,17 @@
 
 Newest first. The same notes appear in the app under "What's new" (see `src/lib/changelog.ts`).
 
+## 1.8.0 — 2026-11-07
+- A weekly look back on the last day of the week and the first day of the next, with one tap to put late to-dos off for a week.
+- Search opens with "/" too, and remembers your recent searches on this device.
+- The damaged-data rescue now adds what it finds instead of replacing what you have.
+- Which place you are at is now remembered separately on each device. Planned stays still sync.
+- Blooms are earned the first time something is finished, so ticking it off and on again no longer adds more.
+- Ticking a routine step no longer erases its Start and Finished times.
+- Calendar (.ics) files wrap long lines so long notes survive every calendar app.
+- A backup from a newer version of Petalkeeper says so. A routine with an empty name becomes "Untitled routine".
+- Each sync panel shows only its own error. Reminders explain how to get phone-calendar reminders when the app is closed.
+
 ## 1.7.1 — 2026-11-07
 - Fixed the Settings check list being squashed on phones, and an indent on the routine four-week history (some new styles shared names with older ones).
 - A setting cleared on one device, like ending a rest, now clears on your other devices too after a sync.

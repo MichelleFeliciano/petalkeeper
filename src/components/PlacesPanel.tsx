@@ -21,6 +21,7 @@ export function PlacesPanel() {
       <p className="hint">
         Switch where you are (like Mom's, Vacation or Road trip) from Today, and your routines follow: each routine, and each step, can be for certain places only. Make a version of a routine for a place from Daily Rituals → Edit.
       </p>
+      <p className="hint">Which place you're at is remembered separately on each device, so your phone can be at Mom's while your computer stays home. Planned stays below are shared by all your devices.</p>
       <ul className="plain">
         {places.map((p) => (
           <li key={p.id} className="row">

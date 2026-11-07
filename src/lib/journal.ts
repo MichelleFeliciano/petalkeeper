@@ -76,7 +76,12 @@ export function counterDay(d: AppData, date: string): { counter: Counter; n: num
 }
 
 /** split text into plain pieces and links so notes can hold URLs and phone numbers safely (no HTML is ever injected) */
-export type Piece = { text: string; href?: string };
+type Piece = { text: string; href?: string };
+/** 7 to 15 digits with a run of at least three, and not a date */
+const looksLikePhone = (s: string) => {
+  const digits = s.replace(/\D/g, '').length;
+  return digits >= 7 && digits <= 15 && /\d{3}/.test(s) && !/^\d{4}-\d{2}-\d{2}$/.test(s);
+};
 export function linkify(text: string): Piece[] {
   const out: Piece[] = [];
   const re = /(https?:\/\/[^\s]+)|(\+?\d[\d\s().-]{6,}\d)/g;
@@ -85,7 +90,8 @@ export function linkify(text: string): Piece[] {
     const i = m.index ?? 0;
     if (i > last) out.push({ text: text.slice(last, i) });
     if (m[1]) out.push({ text: m[1], href: m[1] });
-    else out.push({ text: m[2], href: 'tel:' + m[2].replace(/[^\d+]/g, '') });
+    else if (looksLikePhone(m[2])) out.push({ text: m[2], href: 'tel:' + m[2].replace(/[^\d+]/g, '') });
+    else out.push({ text: m[2] });
     last = i + m[0].length;
   }
   if (last < text.length) out.push({ text: text.slice(last) });

@@ -167,11 +167,14 @@ export function mergeData(base: AppData | null, local: AppData, remote: AppData)
       [...new Set([...l, ...r])].sort().slice(-50),
     ),
   );
-  const keys = [...settingsMap(local).keys()];
   const sm = mergeMaps(settingsMap(base), settingsMap(local), settingsMap(remote));
   const settings = { ...local.settings } as unknown as Record<string, unknown>;
-  for (const k of keys) if (!LOCAL_ONLY.has(k) && sm.has(k)) settings[k] = sm.get(k);
-  // optional settings that were cleared on one side
+  // every setting either side has; one that was cleared on a device (like ending a rest) is cleared everywhere
+  for (const k of new Set([...settingsMap(local).keys(), ...settingsMap(remote).keys()])) {
+    if (LOCAL_ONLY.has(k)) continue;
+    if (sm.has(k)) settings[k] = sm.get(k);
+    else delete settings[k];
+  }
   return {
     version: 1,
     tasks: [...tasks.values()],
@@ -361,7 +364,6 @@ export async function runSync(c: SyncConfig, local: AppData, base: AppData | nul
   throw new SyncError('conflict', 'The cloud copy kept changing. Please try again in a moment.');
 }
 
-/** Replace the cloud copy with this device's data. */
 /** just the current file's id, so it can be replaced even if it can't be read (for example after changing the passphrase) */
 export async function remoteSha(c: SyncConfig, f: Fetch = fetch): Promise<string | undefined> {
   const res = await call(f, c, url(c, `/contents/${encodeURIComponent(c.path)}`));
@@ -370,6 +372,7 @@ export async function remoteSha(c: SyncConfig, f: Fetch = fetch): Promise<string
   return ((await res.json()) as { sha?: string }).sha;
 }
 
+/** Replace the cloud copy with this device's data. */
 export async function pushReplace(c: SyncConfig, local: AppData, f: Fetch = fetch): Promise<void> {
   await putRemote(c, forCloud(local), await remoteSha(c, f), f);
 }

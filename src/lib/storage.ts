@@ -22,7 +22,7 @@ function validTask(t: unknown): t is Task {
   if (!Array.isArray(t.subtasks) || !t.subtasks.every((s) => isObj(s) && isStr(s.id) && isStr(s.title) && typeof s.done === 'boolean')) return false;
   if (!Array.isArray(t.completions) || !t.completions.every(isISODate)) return false;
   if (!Array.isArray(t.skipped) || !t.skipped.every(isISODate)) return false;
-  if (!isObj(t.subDone)) return false;
+  if (!isObj(t.subDone) || !Object.values(t.subDone).every((v) => Array.isArray(v) && v.every(isStr))) return false;
   if (t.recurrence !== undefined) {
     const r = t.recurrence as unknown;
     if (!isObj(r) || !['daily', 'days', 'weekly', 'monthly'].includes(r.freq as string)) return false;

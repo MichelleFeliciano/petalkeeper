@@ -148,6 +148,7 @@ export function SyncPanel() {
   const [expires, setExpires] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  const [confirmOff, setConfirmOff] = useState(false);
 
   const run = async (fn: () => Promise<unknown>) => {
     setBusy(true);
@@ -183,7 +184,7 @@ export function SyncPanel() {
             <button className="btn primary" onClick={() => void sync.syncNow()} disabled={sync.status === 'syncing'}>
               Sync now
             </button>
-            <button className="btn" onClick={sync.disconnect}>
+            <button className="btn" onClick={() => setConfirmOff(true)}>
               Disconnect this device
             </button>
           </div>
@@ -249,6 +250,24 @@ export function SyncPanel() {
           </form>
           <p className="hint">The token is stored only in this browser and is never included in backups. Anyone using this browser profile could use it, so only connect on devices you trust. Other pages hosted at {window.location.host} share this browser storage too, so only keep pages you trust there.</p>
         </>
+      )}
+
+      {confirmOff && (
+        <Modal title="Disconnect this device?" onClose={() => setConfirmOff(false)}>
+          <p>Everything stays on this device. The access token is forgotten, so you would paste it in again to reconnect.</p>
+          <div className="actions">
+            <button className="btn" data-autofocus onClick={() => setConfirmOff(false)}>Stay connected</button>
+            <button
+              className="btn danger"
+              onClick={() => {
+                setConfirmOff(false);
+                sync.disconnect();
+              }}
+            >
+              Disconnect
+            </button>
+          </div>
+        </Modal>
       )}
 
       {sync.pending && (

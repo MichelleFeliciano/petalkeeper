@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Modal } from './Modal';
 import { useStore } from '../store';
-import { findConflicts, isDone, itemsOn, type Occurrence } from '../lib/schedule';
+import { findConflicts, itemsOn, type Occurrence } from '../lib/schedule';
 import { addDays, fmtShort, fmtTime, fromMinutes, nowMinutes } from '../lib/dates';
 import * as ops from '../lib/ops';
 import type { AppData } from '../lib/types';
@@ -144,8 +144,4 @@ export function AdjustDay({ items, onClose }: { items: Occurrence[]; onClose: ()
       </div>
     </Modal>
   );
-}
-
-export function leftover(tasksItems: Occurrence[]) {
-  return tasksItems.filter((o) => !isDone(o.task, o.date));
 }

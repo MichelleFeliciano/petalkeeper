@@ -57,8 +57,8 @@ export function SummaryReport() {
             <>
               <h4>Routines</h4>
               <ul className="plain">
-                {rep.routines.map((r) => (
-                  <li key={r.name + r.scheduled}>
+                {rep.routines.map((r, i) => (
+                  <li key={i}>
                     {r.name}: tended on {r.tended} of {r.scheduled} scheduled days, fully finished on {r.complete}
                   </li>
                 ))}

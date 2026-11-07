@@ -2,10 +2,8 @@ import { useMemo, useState } from 'react';
 import { useStore } from '../store';
 import { TaskCard } from './TaskCard';
 import { itemsOn, isDone } from '../lib/schedule';
-import { fmtLong } from '../lib/dates';
+import { DAY_NAMES, fmtLong } from '../lib/dates';
 import { monthDays } from '../lib/todo';
-
-const NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 /** One month at a time. A dot marks a day with something open, a tick-dot a day where everything is finished. Tap a day to see it. */
 export function MonthView() {
@@ -30,7 +28,7 @@ export function MonthView() {
     const d = new Date(c.y, c.m + n, 1);
     return { y: d.getFullYear(), m: d.getMonth() };
   });
-  const heads = Array.from({ length: 7 }, (_, i) => NAMES[(weekStart + i) % 7]);
+  const heads = Array.from({ length: 7 }, (_, i) => DAY_NAMES[(weekStart + i) % 7]);
   const list = picked.startsWith(`${cursor.y}-${String(cursor.m + 1).padStart(2, '0')}`) ? itemsOn(data.tasks, picked) : [];
 
   return (

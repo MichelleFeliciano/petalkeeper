@@ -5,10 +5,9 @@ import { TaskCard } from '../components/TaskCard';
 import { MonthView } from '../components/MonthView';
 import { findConflicts, isDone, itemsOn, type Occurrence } from '../lib/schedule';
 import { addDays, DAY_NAMES, fmtLong, fmtShort, fmtTime, weekDates, weekday } from '../lib/dates';
-import { categoryOf } from '../lib/types';
 import { buildICS, downloadText } from '../lib/ics';
 import { weekSummary } from '../lib/summary';
-import { allCategories, MOODS } from '../lib/types';
+import { allCategories, categoryOf, MOODS } from '../lib/types';
 
 function WeekReview({ dates }: { dates: string[] }) {
   const { data } = useStore();

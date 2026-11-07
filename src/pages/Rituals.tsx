@@ -3,16 +3,12 @@ import { useStore } from '../store';
 import { Modal } from '../components/Modal';
 import { routineDay } from '../lib/ops';
 import { newId, routineDaysLabel, routineOn } from '../lib/schedule';
-import { addDays, fmtDuration } from '../lib/dates';
+import { addDays, DAY_NAMES, fmtDuration } from '../lib/dates';
 import { atPlace, historyFor, isGentle, isPaused, placeLabel, placeOn, progressOf, recentTended, STARTERS, stepsFor } from '../lib/routines';
-import { linkify, typicalMinutes } from '../lib/journal';
+import { linkify, stepLines, typicalMinutes } from '../lib/journal';
 import { PlaceSwitcher, RestControls } from '../components/Controls';
 import { WeekGrid } from '../components/WeekGrid';
-import { stepLines } from '../lib/journal';
-import type { Place } from '../lib/types';
-import { PARTS, currentPart, partOf, type PartOfDay, type Routine } from '../lib/types';
-
-const DAY_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+import { PARTS, currentPart, partOf, type PartOfDay, type Place, type Routine } from '../lib/types';
 
 function Bed({ done, total }: { done: number; total: number }) {
   // little flowers that appear as steps are finished
@@ -35,8 +31,8 @@ function DayChips({ days, onChange, weekStart, label, suffix = '' }: { days?: nu
         const on = days?.includes(n) ?? false;
         return (
           <label key={n} className={'chip' + (on ? ' on' : '')}>
-            <input type="checkbox" aria-label={DAY_LONG[n] + suffix} checked={on} onChange={() => onChange(on ? (days ?? []).filter((x) => x !== n) : [...(days ?? []), n])} />
-            {DAY_LONG[n].slice(0, 3)}
+            <input type="checkbox" aria-label={DAY_NAMES[n] + suffix} checked={on} onChange={() => onChange(on ? (days ?? []).filter((x) => x !== n) : [...(days ?? []), n])} />
+            {DAY_NAMES[n].slice(0, 3)}
           </label>
         );
       })}

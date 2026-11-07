@@ -1,4 +1,4 @@
-import { fromISO, toISO, toMinutes, weekday, addDays } from './dates';
+import { DAY_NAMES, fromISO, toISO, toMinutes, weekday, addDays } from './dates';
 import type { Routine, Task } from './types';
 
 export interface Occurrence {
@@ -128,12 +128,11 @@ export function nextOccurrence(t: Task, from: string): string | undefined {
   return undefined;
 }
 
-const LONG_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 /** does this routine belong on that date? (no days chosen = every day) */
 export const routineOn = (r: Routine, iso: string): boolean => !r.days || r.days.length === 0 || r.days.includes(fromISO(iso).getDay());
 /** "Every day", "Tuesdays", "Mon, Wed & Fri" */
 export function routineDaysLabel(days?: number[]): string {
   if (!days || days.length === 0 || days.length === 7) return 'Every day';
   const d = [...days].sort((a, b) => a - b);
-  return d.length === 1 ? LONG_DAYS[d[0]] + 's' : d.map((x) => LONG_DAYS[x].slice(0, 3)).join(', ').replace(/, ([^,]*)$/, ' & $1');
+  return d.length === 1 ? DAY_NAMES[d[0]] + 's' : d.map((x) => DAY_NAMES[x].slice(0, 3)).join(', ').replace(/, ([^,]*)$/, ' & $1');
 }

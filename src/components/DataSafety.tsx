@@ -61,7 +61,7 @@ export function SettingsCheck() {
   return (
     <section className="card" aria-labelledby="chk-h">
       <h2 id="chk-h">Settings check</h2>
-      <ul className="check">
+      <ul className="status-list">
         {rows.map((r) => (
           <li key={r.name} className={r.state}>
             <span className="mark" aria-hidden="true">{ICON[r.state]}</span>
@@ -91,7 +91,7 @@ export function HistoryPanel() {
       {history.length === 0 ? (
         <p className="hint">No changes to take back yet. Recent ones will be listed here.</p>
       ) : (
-        <ol className="history" aria-label="Recent changes, newest first">
+        <ol className="change-list" aria-label="Recent changes, newest first">
           {history.slice(0, 15).map((h, i) => (
             <li key={h.at + '-' + i}>
               {h.text} <small>{clock(h.at)}</small>
@@ -185,7 +185,7 @@ export function ImportCheck({ pending, onClose, onDone }: { pending: PendingImpo
           {skip > 0 && (
             <p>
               <strong>Already here, so skipped:</strong> {describeCounts(report.skipped)}.
-              {report.skippedNames.length > 0 && <small className="block">{report.skippedNames.join(', ')}{skip > report.skippedNames.length ? ', …' : ''}</small>}
+              {report.skippedNames.length > 0 && <small className="skipped-names">{report.skippedNames.join(', ')}{skip > report.skippedNames.length ? ', …' : ''}</small>}
             </p>
           )}
           <p className="hint">Importing never changes or deletes what you already have.</p>

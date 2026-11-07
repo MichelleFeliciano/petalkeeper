@@ -1,9 +1,7 @@
 import { useStore } from '../store';
-import { fromISO, weekDates } from '../lib/dates';
+import { DAY_NAMES, fromISO, weekDates, weekday } from '../lib/dates';
 import { historyFor, placeLabel, placeOn } from '../lib/routines';
 import { partOf } from '../lib/types';
-
-const SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /** Routines down the side, days across: the shape of the week at a glance. */
 export function WeekGrid() {
@@ -22,7 +20,7 @@ export function WeekGrid() {
               <th scope="col">Routine</th>
               {dates.map((d) => (
                 <th key={d} scope="col" className={d === today ? 'today' : ''}>
-                  {SHORT[new Date(d + 'T12:00:00').getDay()]}
+                  {DAY_NAMES[weekday(d)].slice(0, 3)}
                   <small>{fromISO(d).getDate()}</small>
                 </th>
               ))}

@@ -8,6 +8,19 @@ export interface Release {
 
 export const CHANGELOG: Release[] = [
   {
+    version: '1.7.1',
+    date: '2026-11-07',
+    notes: [
+      'Fixed the Settings check list being squashed on phones, and an indent on the routine four-week history (some new styles shared names with older ones).',
+      'A setting cleared on one device, like ending a rest, now clears on your other devices too after a sync.',
+      'To-do date words only read real month names, so "buy marble 5" is no longer March 5.',
+      'Dates and lists of small numbers in notes are no longer turned into phone links.',
+      'Editing just one day of a repeating task no longer trips over a hidden last day.',
+      'Disconnecting sync now asks first. The Second Memory file chooser works with a keyboard.',
+      'Damaged saved task data is rejected instead of crashing the app. Smaller tidy-ups of repeated code and styles.',
+    ],
+  },
+  {
     version: '1.7.0',
     date: '2026-10-26',
     notes: [

@@ -24,12 +24,11 @@ const MESSAGES = {
 const prio: Record<Priority, number> = { high: 0, normal: 1, low: 2 };
 
 export function Today() {
-  const { data, today, copyDay, moveOccurrence } = useStore();
+  const { data, today, copyDay, moveOccurrence, updateSettings } = useStore();
   const { openForm } = useUI();
   const [adjust, setAdjust] = useState(false);
   const [templates, setTemplates] = useState(false);
   const [view, setView] = useState<'list' | 'hours'>('list');
-  const { updateSettings } = useStore();
   const { tasks, settings } = data;
 
   const items = useMemo(() => itemsOn(tasks, today), [tasks, today]);
@@ -61,6 +60,7 @@ export function Today() {
   const next =
     timed.find((o) => !isDone(o.task, o.date) && toMinutes(o.task.start!) >= now) ??
     items.find((o) => !isDone(o.task, o.date));
+  const nextLength = next ? (next.task.duration ?? (next.task.start && next.task.end ? toMinutes(next.task.end) - toMinutes(next.task.start) : 0)) : 0;
 
   const hour = new Date().getHours();
   const lastB = settings.lastBackup;
@@ -146,7 +146,7 @@ export function Today() {
           <p>
             <strong>{next.task.title}</strong>
             {next.task.start ? ` · ${fmtTime(next.task.start)}` : ' · whenever suits you'}
-            {next.task.duration || next.task.end ? ` · ${fmtDuration(next.task.duration ?? toMinutes(next.task.end!) - toMinutes(next.task.start!))}` : ''}
+            {nextLength > 0 ? ` · ${fmtDuration(nextLength)}` : ''}
           </p>
         </section>
       )}

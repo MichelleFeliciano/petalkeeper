@@ -39,7 +39,7 @@ export function TaskForm({ task, defaults, occurrenceDate, onClose }: { task?: T
     if (start && end && toMinutes(end) <= toMinutes(start)) return setError('The end time should come after the start time.');
     if (!occurrenceDate && freq !== 'none' && !date) return setError('Pick a start date for something that repeats.');
     if (freq === 'days' && days.length === 0) return setError('Choose at least one day of the week.');
-    if (until && date && until < date) return setError('The end date should not be before the start date.');
+    if (!occurrenceDate && until && date && until < date) return setError('The end date should not be before the start date.');
     let dur = duration ? Math.max(1, parseInt(duration, 10) || 0) : undefined;
     if (start && end) dur = toMinutes(end) - toMinutes(start);
     // a time without a date still needs a place to live: default to today only if a time was given

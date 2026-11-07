@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useStore } from '../store';
 import { SECOND_MEMORY_TODOS_KEY, extractTodos, planTodoCopy, type CopyPlan } from '../lib/secondMemoryImport';
 
@@ -10,6 +10,7 @@ export function SecondMemoryTodos() {
   const { data, importTasks, notify } = useStore();
   const [plan, setPlan] = useState<CopyPlan | null>(null);
   const [error, setError] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
 
   // when Second Memory was used in this same browser, its to-dos are already here to read
   let onThisBrowser = 0;
@@ -52,10 +53,8 @@ export function SecondMemoryTodos() {
         To-dos keep their day, their repeat, whether they are finished, and their order. Doing it again never duplicates: anything already here is skipped, and nothing you have here is changed.
       </p>
       <div className="actions left">
-        <label className="btn">
-          Choose the export file
-          <input type="file" accept="application/json,.json" style={{ display: 'none' }} onChange={(e) => { void fromFile(e.target.files?.[0]); e.target.value = ''; }} />
-        </label>
+        <button className="btn" onClick={() => fileRef.current?.click()}>Choose the export file</button>
+        <input ref={fileRef} type="file" accept="application/json,.json" hidden aria-label="Second Memory export file" onChange={(e) => { void fromFile(e.target.files?.[0]); e.target.value = ''; }} />
         {onThisBrowser > 0 && <button className="btn" onClick={fromBrowser}>Use the {onThisBrowser} to-do{onThisBrowser === 1 ? '' : 's'} found in this browser</button>}
       </div>
       {error && <p className="error" role="alert">{error}</p>}

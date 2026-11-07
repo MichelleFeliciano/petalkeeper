@@ -115,7 +115,7 @@ export function Journal() {
           {MOODS.map((m) => (
             <button
               key={m.id}
-                            aria-pressed={c.mood === m.id}
+              aria-pressed={c.mood === m.id}
               className={'mood' + (c.mood === m.id ? ' on' : '')}
               onClick={() => setCheckin(sel, { mood: c.mood === m.id ? undefined : m.id })}
               aria-label={m.label}

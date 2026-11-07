@@ -7,9 +7,8 @@ import { countdownText, daysUntil, lastDoneLabel } from '../lib/journal';
 import { useAutosave } from '../lib/useAutosave';
 import { clearCorruptCopy, corruptCopy, salvage } from '../lib/storage';
 import { downloadText } from '../lib/ics';
-import { addDays } from '../lib/dates';
+import { addDays, fmtTime } from '../lib/dates';
 import { itemsOn } from '../lib/schedule';
-import { fmtTime } from '../lib/dates';
 import { PARTS, MOODS, currentPart, partOf } from '../lib/types';
 
 
@@ -159,7 +158,7 @@ export function CheckIn() {
         {MOODS.map((m) => (
           <button
             key={m.id}
-                        aria-pressed={c.mood === m.id}
+            aria-pressed={c.mood === m.id}
             className={'mood' + (c.mood === m.id ? ' on' : '')}
             onClick={() => setCheckin(today, { mood: c.mood === m.id ? undefined : m.id })}
             aria-label={m.label}

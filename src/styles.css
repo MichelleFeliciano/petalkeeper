@@ -59,7 +59,7 @@ main { padding: 1.5rem; min-width: 0; }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 0.8rem 1rem; }
 .hero { display: flex; justify-content: space-between; gap: 1rem; align-items: center; background-image: radial-gradient(circle at 100% 0, rgba(232, 184, 196, 0.35), transparent 40%), radial-gradient(circle at 0 100%, rgba(201, 184, 217, 0.3), transparent 40%); }
 .greet { margin: 0.2rem 0 0.6rem; }
-.fairy { flex: none; } .fairy { max-width: 28vw; height: auto; }
+.fairy { flex: none; max-width: 28vw; height: auto; }
 
 .btn { font: inherit; font-size: 0.95rem; padding: 0.5rem 0.9rem; border-radius: 999px; border: 2px solid var(--moss); background: var(--card); color: var(--ink); cursor: pointer; min-height: 40px; }
 .btn:hover { background: rgba(168, 185, 154, 0.3); }
@@ -139,7 +139,7 @@ fieldset { border: 1.5px dashed var(--line); border-radius: 12px; display: grid;
 
 @media (max-width: 1000px) { .week-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 760px) {
-  .app { grid-template-columns: 1fr; padding-bottom: 72px; }
+  .app { grid-template-columns: 1fr; }
   .side { position: fixed; bottom: 0; top: auto; left: 0; right: 0; height: auto; z-index: 30; padding: 0.3rem; border-right: 0; border-top: 2px dotted var(--moss); }
   .brand { display: none; }
   nav { grid-auto-flow: column; grid-auto-columns: 1fr; gap: 0.1rem; }
@@ -172,8 +172,6 @@ h2 .tabs.inline { display: inline-flex; margin-left: 0.8rem; vertical-align: mid
 .guided-timer { text-align: center; font-size: 1.2rem; }
 .ritual-steps li.dragging { opacity: 0.4; }
 .task { border-left-color: var(--cat, var(--sage)); }
-.task[data-priority='high'] { border-left-color: var(--petal); }
-.task[data-priority='low'] { border-left-color: var(--lilac); }
 @media print {
   body { background: #fff; color: #000; font-size: 12pt; }
   .toast, .tabs, .btn, .notice, .fairy, .check { display: none !important; }
@@ -251,11 +249,6 @@ ul.plain { list-style: none; padding: 0; margin: 6px 0; display: grid; gap: 6px;
 label.inline select, label.inline input:not([type='checkbox']) { width: auto; }
 .step-handle { cursor: grab; user-select: none; padding: 0 4px; color: var(--ink-soft); }
 @supports (height: 100dvh) { .lock { min-height: 100dvh; } }
-@media (max-width: 760px) {
-  .app { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
-  .side { padding-bottom: calc(0.3rem + env(safe-area-inset-bottom)); }
-  .toast { bottom: calc(84px + env(safe-area-inset-bottom)); }
-}
 
 /* v1.5 */
 .offline { margin: 0 0 8px; padding: 8px 12px; border-radius: 12px; background: var(--warn-bg); color: var(--warn); font-size: 0.9rem; }
@@ -423,20 +416,20 @@ details > summary { padding: 0.35rem 0; }
 .result .detail { flex-basis: 100%; }
 .help-topic { border-bottom: 1px dotted var(--moss); padding: 0.2rem 0; }
 .help-topic summary { cursor: pointer; font-weight: 600; min-height: 44px; display: flex; align-items: center; }
-.check { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
-.check li { display: grid; grid-template-columns: 1.6rem minmax(0, 1fr) auto; gap: 0.5rem; align-items: center; }
-.check .mark { font-weight: 700; text-align: center; }
-.check li.ok .mark { color: var(--ink); }
-.check li.warn .mark { color: var(--warn); }
-.check small { color: var(--ink-soft); }
-.history { margin: 0.5rem 0; padding-left: 1.3rem; }
-.history small { color: var(--ink-soft); }
+.status-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.5rem; }
+.status-list li { display: grid; grid-template-columns: 1.6rem minmax(0, 1fr) auto; gap: 0.5rem; align-items: center; }
+.status-list .mark { font-weight: 700; text-align: center; }
+.status-list li.ok .mark { color: var(--ink); }
+.status-list li.warn .mark { color: var(--warn); }
+.status-list small { color: var(--ink-soft); }
+.change-list { margin: 0.5rem 0; padding-left: 1.3rem; }
+.change-list small { color: var(--ink-soft); }
 .inline-actions { display: inline-flex; gap: 0.4rem; flex-wrap: wrap; }
 .release h3 { margin: 0.6rem 0 0.2rem; font-size: 1rem; }
 .release h3 small { color: var(--ink-soft); font-weight: 400; }
 .release ul { margin: 0 0 0.4rem; padding-left: 1.2rem; }
 .whatsnew { margin-top: 0.6rem; }
-.block { display: block; }
+.skipped-names { display: block; }
 @media (max-width: 760px) {
   .side-version { display: none; }
   .topbar-actions .lbl-s { display: none; }

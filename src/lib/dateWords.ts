@@ -17,7 +17,7 @@ const DATE_PHRASE = [
   'today', 'tonight', 'tomorrow', 'tmrw', 'next\\s+week',
   'in\\s+\\d{1,3}\\s+(?:days?|weeks?)',
   `(?:next\\s+)?(?:${WEEKDAYS.flat().sort((a, b) => b.length - a.length).join('|')})`,
-  `(?:${MONTH_WORDS.join('|')})[a-z]*\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?`,
+  '(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sept?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?',
   '\\d{1,2}/\\d{1,2}',
 ].join('|');
 const DATE_WORDS_END = new RegExp(`^(.*?\\S)\\s+(?:(?:on|by|due|for)\\s+)?(${DATE_PHRASE})$`, 'i');
